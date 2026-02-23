@@ -80,7 +80,7 @@ STEERING_CONTENT = """# AIVectorMemory - 跨会话持久记忆
 - 发现 bug 或待处理事项时：调用 `track`（action: create）记录问题
 - 修复问题后：调用 `track`（action: update）更新排查内容和结论
 - 问题关闭时：调用 `track`（action: archive）归档
-- 任务进度变化时：调用 `status`（传 state 参数）更新当前任务、进度、最近修改
+- 任务进度变化时：调用 `status`（传 state 参数）更新当前任务、最近修改（progress 自动聚合，无需手动写入）
 - 对话结束前：调用 `auto_save` 保存用户偏好
 
 ## 工具速查
@@ -90,13 +90,18 @@ STEERING_CONTENT = """# AIVectorMemory - 跨会话持久记忆
 | remember | 存入记忆 | content, tags, scope(project/user) |
 | recall | 语义搜索记忆 | query, tags, scope, top_k |
 | forget | 删除记忆 | memory_id / memory_ids |
-| status | 会话状态管理 | state(不传=读取, 传=更新) |
+| status | 会话状态管理 | state(不传=读取, 传=更新), clear_fields(清空列表字段) |
 | track | 问题跟踪 | action(create/update/archive/list) |
 | auto_save | 自动保存偏好 | preferences, extra_tags |
 
 ---
 
 ## 知识库（通过 MCP remember/recall 管理）
+
+**记忆质量要求**：
+- 命令类：必须包含完整可执行命令，禁止用别名或缩写
+- 流程类：必须包含具体步骤，不能只写结论
+- 踩坑类：必须包含错误现象、根因、正确做法
 
 **查询踩坑记录**：`recall`（source: "experience", query: 关键词）
 
@@ -121,9 +126,10 @@ STEERING_CONTENT = """# AIVectorMemory - 跨会话持久记忆
 - `block_reason`：阻塞原因
 - `next_step`：下一步（只能由用户确认后填写）
 - `current_task`：当前任务
-- `progress`：进度列表
+- `progress`：只读计算字段，自动从 track 活跃问题 + task 未完成任务聚合生成，无需手动写入
 - `recent_changes`：最近修改（不超过10条）
 - `pending`：待处理列表
+- `clear_fields`：要清空的列表字段名（如 `["pending"]`），用于绕过部分 IDE 过滤空数组的问题
 
 **分工**：
 - MCP status：阻塞状态、当前进度、最近修改
@@ -171,7 +177,7 @@ STEERING_CONTENT = """# AIVectorMemory - 跨会话持久记忆
 **任务文档规范**：
 - 每个任务细化到最小可执行单元
 - 使用 checkbox `- [ ]` 标记状态
-- **每完成一个子任务，立即更新为 `- [x]`**
+- **每完成一个子任务，调用 `task`（action: update）更新状态（自动同步 checkbox）**
 - 禁止批量完成后再统一更新
 
 **整理任务文档时**：必须打开设计文档逐条核对，发现遗漏先补充任务文档再执行
@@ -239,9 +245,7 @@ STEERING_CONTENT = """# AIVectorMemory - 跨会话持久记忆
 3. 用户确认需求后，编写 `design.md`：设计文档，技术方案和架构
 4. 用户确认设计后，编写 `tasks.md`：任务文档，拆分为最小可执行单元
 5. 同步调用 `task`（action: batch_create, feature_id: spec 目录名）将任务写入数据库
-6. 按任务文档顺序执行，每完成一个子任务：
-   - 更新 `tasks.md` 中对应 checkbox
-   - 调用 `task`（action: update）更新数据库状态
+6. 按任务文档顺序执行，每完成一个子任务调用 `task`（action: update）更新状态（自动同步 tasks.md）
 7. 全部完成后调用 `task`（action: list）确认无遗漏
 
 **feature_id 规范**：与 spec 目录名一致，使用 kebab-case（如 `task-scheduler`、`v0.2.5-upgrade`）
@@ -259,6 +263,11 @@ STEERING_CONTENT = """# AIVectorMemory - 跨会话持久记忆
 ## 问题追踪（通过 MCP track 管理）
 
 **工具**：`track`（action: create/update/list/archive）
+
+**⚠️ 发现问题必须先记录，禁止跳过**：
+- 无论问题大小，发现即 `track create`，禁止先动手修再补记录
+- 禁止"顺手修了"——没有 track 记录的修复等于没修
+- 执行顺序：发现问题 → `track create` → 排查 → 修复 → `track update` → 验证
 
 **问题处理原则**：
 - 一次只修一个问题

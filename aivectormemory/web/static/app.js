@@ -14,7 +14,7 @@ const api = (path, opts = {}) => {
 };
 
 const PAGE_SIZE = 10;
-const state = { projectPage: 1, userPage: 1 };
+const state = { projectPage: 1, userPage: 1, issuePage: 1 };
 
 const i18n = { get status() { return t('status') || {}; } };
 
@@ -105,17 +105,17 @@ function renderIssueCard(i) {
   const hasExpandable = i.content || structured;
   const actions = isArchived
     ? `<div class="issue-card__actions">
-        <button class="btn btn--ghost-danger btn--sm" onclick="event.stopPropagation();deleteIssueAction(${i.id}, true)">${t('delete')}</button>
+        <button class="btn btn--ghost-danger btn--sm" onclick="event.stopPropagation();deleteIssueAction(${i.issue_number}, true)">${t('delete')}</button>
       </div>`
     : `<div class="issue-card__actions">
-        <button class="btn btn--ghost btn--sm" onclick="event.stopPropagation();editIssueAction(${i.id})">${t('edit')}</button>
-        <button class="btn btn--ghost btn--sm" onclick="event.stopPropagation();archiveIssueAction(${i.id})" style="color:#FBBF24">${t('archiveIssue')}</button>
-        <button class="btn btn--ghost-danger btn--sm" onclick="event.stopPropagation();deleteIssueAction(${i.id}, false)">${t('delete')}</button>
+        <button class="btn btn--ghost btn--sm" onclick="event.stopPropagation();editIssueAction(${i.issue_number})">${t('edit')}</button>
+        <button class="btn btn--ghost btn--sm" onclick="event.stopPropagation();archiveIssueAction(${i.issue_number})" style="color:#FBBF24">${t('archiveIssue')}</button>
+        <button class="btn btn--ghost-danger btn--sm" onclick="event.stopPropagation();deleteIssueAction(${i.issue_number}, false)">${t('delete')}</button>
       </div>`;
   return `
-  <div class="issue-card" style="cursor:pointer" onclick="${isArchived ? `this.classList.toggle('expanded')` : `if(!event.target.closest('.issue-card__actions')){editIssueAction(${i.id})}else{this.classList.toggle('expanded')}`}">
+  <div class="issue-card" style="cursor:pointer" onclick="${isArchived ? `this.classList.toggle('expanded')` : `if(!event.target.closest('.issue-card__actions')){editIssueAction(${i.issue_number})}else{this.classList.toggle('expanded')}`}">
     <div class="issue-card__header">
-      <div class="issue-card__title"><span class="issue-card__number">#${i.issue_number}</span>${escHtml(i.title)}${parentTag}</div>
+      <div class="issue-card__title"><span class="issue-card__number">#${i.issue_number}</span>${escHtml(i.title)}${parentTag}${i.task_progress ? `<span class="issue-task-progress">${i.task_progress.done}/${i.task_progress.total}</span>` : ''}</div>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="badge badge--${badge}">${escHtml(label)}</span>
         ${actions}
@@ -273,15 +273,14 @@ async function showMemoryModal(title, scope, query, page = 1, tag = null) {
 }
 
 async function showIssueModal(title, status, page = 1) {
-  const url = status === 'archived' ? 'issues?status=archived' : `issues?status=${status}`;
+  const offset = (page - 1) * MODAL_PAGE_SIZE;
+  const url = `issues?status=${status}&limit=${MODAL_PAGE_SIZE}&offset=${offset}`;
   const data = await api(url);
   const issues = data.issues || [];
-  const total = issues.length;
+  const total = data.total || 0;
   const pages = Math.ceil(total / MODAL_PAGE_SIZE) || 1;
-  const start = (page - 1) * MODAL_PAGE_SIZE;
-  const slice = issues.slice(start, start + MODAL_PAGE_SIZE);
 
-  const list = slice.length ? slice.map(i => renderIssueCard(i)).join('') : `<div class="empty-state">${t('noIssues')}</div>`;
+  const list = issues.length ? issues.map(i => renderIssueCard(i)).join('') : `<div class="empty-state">${t('noIssues')}</div>`;
 
   let pagerHtml = '';
   if (pages > 1) {
@@ -291,13 +290,33 @@ async function showIssueModal(title, status, page = 1) {
   }
 
   showModal(title, `<div class="modal-list">${list}</div>${pagerHtml}`);
-  $$('#modal-content .pager__btn').forEach(btn => {
+  $('#modal-content .pager__btn').forEach(btn => {
     btn.addEventListener('click', () => showIssueModal(title, status, parseInt(btn.dataset.page)));
   });
 }
 
 async function loadStats() {
-  const s = await api('stats');
+  const [s, statusData] = await Promise.all([api('stats'), api('status')]);
+
+  const alertEl = $('#block-alert-container');
+  if (statusData && !statusData.empty && statusData.is_blocked) {
+    alertEl.innerHTML = `<div class="block-alert" role="alert" onclick="switchTab('status')" style="cursor:pointer">
+      <div class="block-alert__header">
+        <span class="block-alert__dot"></span>
+        <span class="block-alert__title">${t('blocked')}</span>
+      </div>
+      <div class="block-alert__reason">${escHtml(statusData.block_reason || '')}</div>
+      ${statusData.current_task ? `<div class="block-alert__task"><span class="block-alert__label">${t('currentTask')}</span>${escHtml(statusData.current_task)}</div>` : ''}
+    </div>`;
+  } else {
+    alertEl.innerHTML = `<div class="block-alert block-alert--ok" onclick="switchTab('status')" style="cursor:pointer">
+      <div class="block-alert__header">
+        <span class="block-alert__dot"></span>
+        <span class="block-alert__title">${t('normalStatus')}</span>
+      </div>
+      ${statusData && statusData.current_task ? `<div class="block-alert__task"><span class="block-alert__label">${t('currentTask')}</span>${escHtml(statusData.current_task)}</div>` : ''}
+    </div>`;
+  }
   const mem = s.memories || {};
   const issues = s.issues || {};
   const tags = s.tags || {};
@@ -545,19 +564,66 @@ async function loadStatus() {
 async function loadIssues() {
   const date = $('#issue-date').value;
   const status = $('#issue-status-filter').value;
-  let url = 'issues?';
-  if (date) url += `date=${date}&`;
-  if (status === 'archived') url += 'include_archived=true';
-  else if (status) url += `status=${status}`;
+  const keyword = $('#issue-search')?.value?.trim() || '';
+  const page = state.issuePage;
+  const offset = (page - 1) * PAGE_SIZE;
+  let url = `issues?limit=${PAGE_SIZE}&offset=${offset}`;
+  if (date) url += `&date=${date}`;
+  if (status) url += `&status=${status}`;
+  if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
   const data = await api(url);
   const issues = data.issues || [];
+  const total = data.total || 0;
 
   $('#issue-list').innerHTML = issues.length ? issues.map(i => renderIssueCard(i)).join('') : `<div class="empty-state">${t('noIssues')}</div>`;
+  renderPager('#issue-pager', page, total, p => { state.issuePage = p; loadIssues(); });
 }
 
 $('#issue-date').value = new Date().toISOString().slice(0, 10);
-$('#issue-date').addEventListener('change', loadIssues);
-$('#issue-status-filter').addEventListener('change', loadIssues);
+$('#issue-date').addEventListener('change', () => { state.issuePage = 1; loadIssues(); });
+$('#issue-status-filter').addEventListener('change', () => { state.issuePage = 1; loadIssues(); });
+
+$('#btn-issue-all')?.addEventListener('click', () => {
+  $('#issue-date').value = '';
+  $('#issue-status-filter').value = 'all';
+  $('#issue-search').value = '';
+  $('#issue-search-clear')?.classList.add('hidden');
+  state.issuePage = 1;
+  loadIssues();
+});
+
+$('#btn-issue-today')?.addEventListener('click', () => {
+  $('#issue-date').value = new Date().toISOString().slice(0, 10);
+  state.issuePage = 1;
+  loadIssues();
+});
+
+// issue search: debounce input + clear button
+const _issueSearchHandler = debounce(() => { state.issuePage = 1; loadIssues(); }, 300);
+$('#issue-search')?.addEventListener('input', () => {
+  const val = $('#issue-search').value;
+  $('#issue-search-clear')?.classList.toggle('hidden', !val);
+  _issueSearchHandler();
+});
+$('#issue-search-clear')?.addEventListener('click', () => {
+  $('#issue-search').value = '';
+  $('#issue-search-clear').classList.add('hidden');
+  state.issuePage = 1;
+  loadIssues();
+});
+$('#btn-issue-search')?.addEventListener('click', () => { state.issuePage = 1; loadIssues(); });
+// task search clear button
+const _taskSearchHandler = debounce(() => loadTasks(), 300);
+$('#task-search-clear')?.addEventListener('click', () => {
+  $('#task-search').value = '';
+  $('#task-search-clear').classList.add('hidden');
+  loadTasks();
+});
+$('#task-search')?.addEventListener('input', () => {
+  const val = $('#task-search').value;
+  $('#task-search-clear')?.classList.toggle('hidden', !val);
+  _taskSearchHandler();
+});
 
 $('#btn-add-issue')?.addEventListener('click', () => {
   showModal(t('addIssue'), `
@@ -581,15 +647,9 @@ $('#btn-add-issue')?.addEventListener('click', () => {
   setTimeout(() => { const inp = $('#issue-title-input'); inp && inp.focus(); }, 100);
 });
 
-window.editIssueAction = async (id) => {
-  const data = await api(`issues?status=pending`);
-  const all = [...(data.issues || [])];
-  const data2 = await api(`issues?status=in_progress`);
-  all.push(...(data2.issues || []));
-  const data3 = await api(`issues?status=completed`);
-  all.push(...(data3.issues || []));
-  const issue = all.find(i => i.id === id);
-  if (!issue) return;
+window.editIssueAction = async (issueNum) => {
+  const issue = await api(`issues/${issueNum}`);
+  if (!issue || issue.error) return;
   const extraFields = [
     ['issueDescription', 'edit-issue-description', issue.description, 80],
     ['issueInvestigation', 'edit-issue-investigation', issue.investigation, 80],
@@ -639,25 +699,25 @@ window.editIssueAction = async (id) => {
       feature_id: $('#edit-issue-featureid').value,
       tags: $('#edit-issue-tags').value.split(',').map(s => s.trim()).filter(Boolean),
     };
-    await api(`issues/${id}`, { method: 'PUT', body });
+    await api(`issues/${issueNum}`, { method: 'PUT', body });
     hideModal();
     toast(t('issueUpdated'));
     loadIssues();
   });
 };
 
-window.archiveIssueAction = (id) => {
+window.archiveIssueAction = (issueNum) => {
   showConfirm(t('confirmArchiveIssue'), async () => {
-    const res = await api(`issues/${id}?action=archive`, { method: 'DELETE' });
+    const res = await api(`issues/${issueNum}?action=archive`, { method: 'DELETE' });
     if (res.error) { toast(res.error, 'error'); return; }
     toast(t('issueArchived'));
     loadIssues();
   }, { btnText: t('archiveIssue'), danger: false });
 };
 
-window.deleteIssueAction = (id, isArchived) => {
+window.deleteIssueAction = (issueNum, isArchived) => {
   showConfirm(t('confirmDeleteIssue'), async () => {
-    const url = isArchived ? `issues/${id}?action=delete&archived=true` : `issues/${id}?action=delete`;
+    const url = isArchived ? `issues/${issueNum}?action=delete&archived=true` : `issues/${issueNum}?action=delete`;
     const res = await api(url, { method: 'DELETE' });
     if (res.error) { toast(res.error, 'error'); return; }
     toast(t('issueDeleted'));
@@ -670,6 +730,7 @@ let tagData = [], tagSelected = new Set();
 const TASK_STATUS_CLASSES = { pending: 'status--pending', in_progress: 'status--progress', completed: 'status--done', skipped: 'status--skipped' };
 
 window._expandedNodes = new Set();
+window._expandedGroups = new Set();
 
 function formatFeatureId(fid) {
   if (fid.startsWith('_sys/digest')) return t('sysDigest');
@@ -679,6 +740,11 @@ function formatFeatureId(fid) {
 
 window.toggleNodeCollapse = (nodeId) => {
   window._expandedNodes.has(nodeId) ? window._expandedNodes.delete(nodeId) : window._expandedNodes.add(nodeId);
+  loadTasks();
+};
+
+window.toggleGroupCollapse = (fid) => {
+  window._expandedGroups.has(fid) ? window._expandedGroups.delete(fid) : window._expandedGroups.add(fid);
   loadTasks();
 };
 
@@ -724,11 +790,49 @@ function renderTaskCard(t_item) {
 async function loadTasks() {
   const featureId = $('#task-feature-filter').value;
   const status = $('#task-status-filter').value;
+  const keyword = ($('#task-search')?.value || '').trim().toLowerCase();
+
+  if (status === 'archived') {
+    let url = 'tasks/archived?';
+    if (featureId) url += `feature_id=${encodeURIComponent(featureId)}`;
+    const data = await api(url);
+    let tasks = data.tasks || [];
+    if (keyword) tasks = tasks.filter(t_item => t_item.title.toLowerCase().includes(keyword) || t_item.children?.some(c => c.title.toLowerCase().includes(keyword)));
+    if (!tasks.length) { $('#task-list').innerHTML = `<div class="empty-state">${t('noTasks')}</div>`; return; }
+    let html = '';
+    for (const node of tasks) {
+      const kids = node.children || [];
+      const total = kids.length || 1;
+      const done = kids.length ? kids.filter(c => c.status === 'completed').length : (node.status === 'completed' ? 1 : 0);
+      html += `<div class="task-group task-group--archived">
+        <div class="task-group-header">
+          <span class="task-group-title">${escHtml(formatFeatureId(node.feature_id))}</span>
+          <span class="task-group-header-right">
+            <span class="task-group-progress">${done}/${total}</span>
+            <span class="task-status-badge task-status--archived">${t('status.archived')}</span>
+          </span>
+        </div>
+        <div class="task-group-items">${kids.length ? kids.map(c => `<div class="task-card task-card--archived"><span class="task-checkbox task-checkbox--${c.status}"></span><span class="task-title">${escHtml(c.title)}</span></div>`).join('') : `<div class="task-card task-card--archived"><span class="task-checkbox task-checkbox--${node.status}"></span><span class="task-title">${escHtml(node.title)}</span></div>`}</div>
+      </div>`;
+    }
+    $('#task-list').innerHTML = html;
+    return;
+  }
+
   let url = 'tasks?';
   if (featureId) url += `feature_id=${encodeURIComponent(featureId)}&`;
   if (status) url += `status=${status}`;
   const data = await api(url);
-  const tasks = data.tasks || [];
+  let tasks = data.tasks || [];
+
+  if (keyword) {
+    const matchTask = t_item => {
+      if (t_item.title.toLowerCase().includes(keyword)) return true;
+      if (t_item.children?.some(c => c.title.toLowerCase().includes(keyword))) return true;
+      return false;
+    };
+    tasks = tasks.filter(matchTask);
+  }
 
   const features = [...new Set(tasks.map(t_item => t_item.feature_id))];
   const filterEl = $('#task-feature-filter');
@@ -748,23 +852,35 @@ async function loadTasks() {
 
   let html = '';
   for (const [fid, items] of Object.entries(grouped)) {
-    let total = 0, done = 0;
+    let total = 0, done = 0, hasInProgress = false;
     items.forEach(i => {
       const kids = i.children || [];
-      if (kids.length) { total += kids.length; done += kids.filter(c => c.status === 'completed').length; }
-      else { total++; if (i.status === 'completed') done++; }
+      if (kids.length) {
+        total += kids.length;
+        kids.forEach(c => { if (c.status === 'completed') done++; else if (c.status === 'in_progress') hasInProgress = true; });
+      } else {
+        total++;
+        if (i.status === 'completed') done++;
+        else if (i.status === 'in_progress') hasInProgress = true;
+      }
     });
-    const addBtn = `<span class="task-action-btn" onclick="addTaskToFeature('${escHtml(fid).replace(/'/g,'\\&#39;')}')" title="${t('addTask')}">＋</span>`;
-    const delGrpBtn = `<span class="task-action-btn task-action-btn--danger" onclick="deleteFeatureGroupAction('${escHtml(fid).replace(/'/g,'\\&#39;')}')" title="${t('deleteFeatureGroup')}">✕</span>`;
+    const grpStatus = done === total ? 'completed' : hasInProgress || done > 0 ? 'in_progress' : 'pending';
+    const grpDate = items.reduce((min, i) => i.created_at < min ? i.created_at : min, items[0].created_at).slice(0, 10);
+    const grpCollapsed = !window._expandedGroups.has(fid);
+    const addBtn = `<span class="task-action-btn" onclick="event.stopPropagation();addTaskToFeature('${escHtml(fid).replace(/'/g,'\\&#39;')}')" title="${t('addTask')}">＋</span>`;
+    const delGrpBtn = `<span class="task-action-btn task-action-btn--danger" onclick="event.stopPropagation();deleteFeatureGroupAction('${escHtml(fid).replace(/'/g,'\\&#39;')}')" title="${t('deleteFeatureGroup')}">✕</span>`;
     html += `<div class="task-group">
-      <div class="task-group-header">
+      <div class="task-group-header${grpCollapsed ? ' collapsed' : ''}" onclick="toggleGroupCollapse('${escHtml(fid).replace(/'/g,'\\&#39;')}')">
+        <span class="task-group-toggle">▼</span>
         <span class="task-group-title">${escHtml(formatFeatureId(fid))}</span>
+        <span class="task-group-date">${grpDate}</span>
         <span class="task-group-header-right">
           <span class="task-group-progress">${done}/${total}</span>
+          <span class="task-status-badge task-status--${grpStatus}">${t('status.' + grpStatus)}</span>
           <span class="task-actions-group">${addBtn}${delGrpBtn}</span>
         </span>
       </div>
-      <div class="task-group-items">${items.map(renderTaskCard).join('')}</div>
+      <div class="task-group-items${grpCollapsed ? ' hidden' : ''}">${items.map(renderTaskCard).join('')}</div>
     </div>`;
   }
   $('#task-list').innerHTML = html;

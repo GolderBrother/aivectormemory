@@ -5,7 +5,7 @@ TOOL_DEFINITIONS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "content": {"type": "string", "description": "记忆内容，Markdown 格式"},
+                "content": {"type": "string", "description": "记忆内容，Markdown 格式。命令类须含完整可执行命令，流程类须含具体步骤，禁止模糊缩写"},
                 "tags": {"type": "array", "items": {"type": "string"}, "description": "标签列表"},
                 "scope": {"type": "string", "enum": ["user", "project"], "default": "project", "description": "作用域"}
             },
@@ -42,22 +42,26 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "status",
-        "description": "读取或更新会话状态（阻塞状态、当前任务、进度等）。不传 state 参数则读取，传则部分更新。",
+        "description": "读取或更新会话状态（阻塞状态、当前任务、进度等）。不传 state 参数则读取，传则部分更新。progress 为只读计算字段，自动从 track 活跃问题 + task 未完成任务聚合生成，无需手动写入。清空列表字段时使用 clear_fields 参数（因部分 IDE 会过滤空数组）。",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "state": {
                     "type": "object",
-                    "description": "要更新的字段（部分更新）",
+                    "description": "要更新的字段（部分更新）。progress 为只读字段，传入会被忽略。",
                     "properties": {
                         "is_blocked": {"type": "boolean"},
                         "block_reason": {"type": "string"},
                         "next_step": {"type": "string"},
                         "current_task": {"type": "string"},
-                        "progress": {"type": "array", "items": {"type": "string"}},
                         "recent_changes": {"type": "array", "items": {"type": "string"}},
                         "pending": {"type": "array", "items": {"type": "string"}}
                     }
+                },
+                "clear_fields": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["recent_changes", "pending"]},
+                    "description": "要清空的列表字段名。用于绕过部分 IDE 过滤空数组的问题，例如传 [\"pending\"] 等同于 state.pending=[]。"
                 }
             }
         }
@@ -71,7 +75,7 @@ TOOL_DEFINITIONS = [
                 "action": {"type": "string", "enum": ["create", "update", "archive", "delete", "list"]},
                 "title": {"type": "string", "description": "问题标题（create）"},
                 "date": {"type": "string", "description": "日期 YYYY-MM-DD"},
-                "issue_id": {"type": "integer", "description": "问题 ID（update/archive/delete）"},
+                "issue_id": {"type": "integer", "description": "list 时传入可查单条问题（活跃+归档都查），避免拉全量列表"},
                 "status": {"type": "string", "enum": ["pending", "in_progress", "completed"]},
                 "content": {"type": "string", "description": "排查内容"},
                 "parent_id": {"type": "integer", "description": "父问题 ID（create，可选，默认 0）"},
@@ -83,20 +87,20 @@ TOOL_DEFINITIONS = [
                 "test_result": {"type": "string", "description": "自测结果"},
                 "notes": {"type": "string", "description": "注意事项"},
                 "feature_id": {"type": "string", "description": "关联功能标识"},
-                "include_archived": {"type": "boolean", "default": False, "description": "list 时是否包含已归档问题"},
-                "issue_id": {"type": "integer", "description": "list 时传入可查单条问题（活跃+归档都查），避免拉全量列表"}
+                "brief": {"type": "boolean", "default": True, "description": "list 时是否只返回摘要（id/title/status/date），默认 true。需要详情用 issue_id 查单条"},
+                "limit": {"type": "integer", "default": 50, "description": "list 时返回条数上限，默认 50"}
             },
             "required": ["action"]
         }
     },
     {
         "name": "task",
-        "description": "任务管理：batch_create/update/list 三个 action。通过 feature_id 关联 spec 文档和问题追踪。",
+        "description": "任务管理：batch_create/update/list/delete/archive。update 更新状态后自动同步所有 IDE 的 tasks.md checkbox，并联动同步关联问题状态。archive 将指定功能组的所有任务移入归档表。",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "action": {"type": "string", "enum": ["batch_create", "update", "list", "delete"]},
-                "feature_id": {"type": "string", "description": "关联的功能标识"},
+                "action": {"type": "string", "enum": ["batch_create", "update", "list", "delete", "archive"]},
+                "feature_id": {"type": "string", "description": "关联的功能标识（list 时必填）"},
                 "tasks": {
                     "type": "array",
                     "items": {

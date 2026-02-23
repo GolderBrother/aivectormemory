@@ -73,8 +73,11 @@ class MCPServer:
             return
         try:
             result = handler(args, cm=self.cm, engine=self.engine, session_id=self._session_id)
+            text = str(result)
+            if len(text) > 30000:
+                text = text[:30000] + "\n[truncated: output too large, use specific query to narrow results]"
             write_message(make_result(req_id, {
-                "content": [{"type": "text", "text": str(result)}]
+                "content": [{"type": "text", "text": text}]
             }))
         except ValueError as e:
             write_message(make_error(req_id, INVALID_PARAMS, str(e)))

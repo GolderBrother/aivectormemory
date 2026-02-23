@@ -89,8 +89,10 @@ class TaskRepo:
             if all_kids:
                 # 有子任务的节点：过滤子任务，动态计算节点状态
                 kids = [k for k in all_kids if k["status"] == status] if status else all_kids
+                if status and not kids:
+                    continue
                 node["children"] = kids
-                node["status"] = self._compute_status(kids) if kids else ("pending" if status else node["status"])
+                node["status"] = self._compute_status(kids)
                 result.append(node)
             else:
                 # 扁平任务（无子任务）：直接按 status 过滤
@@ -140,3 +142,60 @@ class TaskRepo:
             (now, self.project_dir, feature_id)
         )
         self.conn.commit()
+
+    def archive_by_feature(self, feature_id: str) -> dict:
+        now = self._now()
+        rows = self.conn.execute(
+            "SELECT * FROM tasks WHERE project_dir=? AND feature_id=?",
+            (self.project_dir, feature_id)
+        ).fetchall()
+        count = 0
+        for r in rows:
+            self.conn.execute(
+                """INSERT INTO tasks_archive
+                   (project_dir, feature_id, title, status, sort_order, parent_id,
+                    task_type, metadata, original_task_id, archived_at, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (r["project_dir"], r["feature_id"], r["title"], r["status"],
+                 r["sort_order"], r["parent_id"], r["task_type"], r["metadata"],
+                 r["id"], now, r["created_at"], r["updated_at"])
+            )
+            count += 1
+        self.conn.execute(
+            "DELETE FROM tasks WHERE project_dir=? AND feature_id=?",
+            (self.project_dir, feature_id)
+        )
+        self.conn.commit()
+        return {"archived": count, "feature_id": feature_id}
+
+    def list_archived(self, feature_id: str | None = None) -> list[dict]:
+        sql, params = "SELECT * FROM tasks_archive WHERE project_dir=?", [self.project_dir]
+        if feature_id:
+            sql += " AND feature_id=?"
+            params.append(feature_id)
+        sql += " ORDER BY feature_id, sort_order, id"
+        rows = [dict(r) for r in self.conn.execute(sql, params).fetchall()]
+        id_map = {r["original_task_id"]: r for r in rows}
+        top_level = [r for r in rows if r["parent_id"] == 0]
+        for node in top_level:
+            node["children"] = [r for r in rows if r["parent_id"] == node["original_task_id"]]
+        return top_level
+
+    def get_feature_status(self, feature_id: str) -> str:
+        rows = self.conn.execute(
+            "SELECT status FROM tasks WHERE project_dir=? AND feature_id=? AND parent_id!=0",
+            (self.project_dir, feature_id)
+        ).fetchall()
+        if not rows:
+            rows = self.conn.execute(
+                "SELECT status FROM tasks WHERE project_dir=? AND feature_id=?",
+                (self.project_dir, feature_id)
+            ).fetchall()
+        if not rows:
+            return "pending"
+        statuses = {r["status"] for r in rows}
+        if statuses == {"completed"}:
+            return "completed"
+        if statuses == {"pending"}:
+            return "pending"
+        return "in_progress"

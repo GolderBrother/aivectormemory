@@ -11,12 +11,30 @@ class IssueRepo:
     def _now(self) -> str:
         return datetime.now().astimezone().isoformat()
 
-    def _next_number(self, date: str) -> int:
-        row = self.conn.execute(
-            "SELECT MAX(issue_number) as max_num FROM issues WHERE date=? AND project_dir=?",
-            (date, self.project_dir)
+    def _next_number(self) -> int:
+        r1 = self.conn.execute(
+            "SELECT MAX(issue_number) as m FROM issues WHERE project_dir=?",
+            (self.project_dir,)
         ).fetchone()
-        return (row["max_num"] or 0) + 1
+        r2 = self.conn.execute(
+            "SELECT MAX(issue_number) as m FROM issues_archive WHERE project_dir=?",
+            (self.project_dir,)
+        ).fetchone()
+        return max(r1["m"] or 0, r2["m"] or 0) + 1
+
+    def get_by_number(self, num: int) -> dict | None:
+        row = self.conn.execute(
+            "SELECT * FROM issues WHERE issue_number=? AND project_dir=?",
+            (num, self.project_dir)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def get_archived_by_number(self, num: int) -> dict | None:
+        row = self.conn.execute(
+            "SELECT * FROM issues_archive WHERE issue_number=? AND project_dir=?",
+            (num, self.project_dir)
+        ).fetchone()
+        return dict(row) if row else None
 
     def create(self, date: str, title: str, content: str = "", memory_id: str = "", parent_id: int = 0) -> dict:
         # 去重：同项目 + 同标题 + 未归档 → 返回已有记录
@@ -27,7 +45,7 @@ class IssueRepo:
         if existing:
             return {"id": existing["id"], "issue_number": existing["issue_number"], "date": existing["date"], "deduplicated": True}
         now = self._now()
-        num = self._next_number(date)
+        num = self._next_number()
         cur = self.conn.execute(
             "INSERT INTO issues (project_dir, issue_number, date, title, status, content, memory_id, parent_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (self.project_dir, num, date, title, "pending", content, memory_id, parent_id, now, now)
@@ -62,14 +80,14 @@ class IssueRepo:
         cur = self.conn.execute(
             """INSERT INTO issues_archive (project_dir, issue_number, date, title, content, memory_id,
                description, investigation, root_cause, solution, files_changed, test_result, notes,
-               feature_id, parent_id, status, archived_at, created_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               feature_id, parent_id, status, original_issue_id, archived_at, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (r["project_dir"], r["issue_number"], r["date"], r["title"], r["content"],
              r.get("memory_id", ""),
              r.get("description", ""), r.get("investigation", ""), r.get("root_cause", ""),
              r.get("solution", ""), r.get("files_changed", "[]"), r.get("test_result", ""),
              r.get("notes", ""), r.get("feature_id", ""), r.get("parent_id", 0),
-             r.get("status", ""), now, r["created_at"])
+             r.get("status", ""), issue_id, now, r["created_at"])
         )
         archive_id = cur.lastrowid
         if self.engine:
@@ -83,24 +101,69 @@ class IssueRepo:
         self.conn.commit()
         return {"issue_id": issue_id, "archived_at": now, "memory_id": r.get("memory_id", "")}
 
-    def list_by_date(self, date: str | None = None, status: str | None = None) -> list[dict]:
-        sql, params = "SELECT * FROM issues WHERE project_dir=?", [self.project_dir]
+    _BRIEF_COLS = "id, issue_number, date, title, status, feature_id, created_at"
+
+    def list_by_date(self, date: str | None = None, status: str | None = None,
+                     brief: bool = True, limit: int = 50, offset: int = 0,
+                     keyword: str | None = None) -> tuple[list[dict], int]:
+        cols = self._BRIEF_COLS if brief else "*"
+        where, params = "WHERE project_dir=?", [self.project_dir]
         if date:
-            sql += " AND date=?"
+            where += " AND date=?"
             params.append(date)
         if status:
-            sql += " AND status=?"
+            where += " AND status=?"
             params.append(status)
-        sql += " ORDER BY date DESC, issue_number ASC"
-        return [dict(r) for r in self.conn.execute(sql, params).fetchall()]
+        if keyword:
+            where += " AND title LIKE ?"
+            params.append(f"%{keyword}%")
+        total = self.conn.execute(f"SELECT COUNT(*) as c FROM issues {where}", params).fetchone()["c"]
+        sql = f"SELECT {cols} FROM issues {where} ORDER BY date DESC, issue_number ASC LIMIT ? OFFSET ?"
+        rows = [dict(r) for r in self.conn.execute(sql, params + [limit, offset]).fetchall()]
+        return rows, total
 
-    def list_archived(self, date: str | None = None) -> list[dict]:
-        sql, params = "SELECT * FROM issues_archive WHERE project_dir=?", [self.project_dir]
+    def list_all(self, date: str | None = None, keyword: str | None = None,
+                 limit: int = 50, offset: int = 0) -> tuple[list[dict], int]:
+        """UNION issues + issues_archive, return all issues."""
+        cols = "id, issue_number, date, title, status, feature_id, created_at"
+        w1, w2, p = "WHERE project_dir=?", "WHERE project_dir=?", [self.project_dir]
+        p2 = [self.project_dir]
         if date:
-            sql += " AND date=?"
+            w1 += " AND date=?"; w2 += " AND date=?"
+            p.append(date); p2.append(date)
+        if keyword:
+            w1 += " AND title LIKE ?"; w2 += " AND title LIKE ?"
+            p.append(f"%{keyword}%"); p2.append(f"%{keyword}%")
+        cnt = (f"SELECT COUNT(*) as c FROM ("
+               f"SELECT id FROM issues {w1} UNION ALL "
+               f"SELECT id FROM issues_archive {w2})")
+        total = self.conn.execute(cnt, p + p2).fetchone()["c"]
+        sql = (f"SELECT {cols}, NULL as archived_at FROM issues {w1} UNION ALL "
+               f"SELECT {cols}, archived_at FROM issues_archive {w2} "
+               f"ORDER BY date DESC, issue_number ASC LIMIT ? OFFSET ?")
+        rows = [dict(r) for r in self.conn.execute(sql, p + p2 + [limit, offset]).fetchall()]
+        for r in rows:
+            if r.get("archived_at"):
+                r["status"] = "archived"
+        return rows, total
+
+    _BRIEF_COLS_ARCHIVE = "id, issue_number, date, title, status, feature_id, created_at, archived_at"
+
+    def list_archived(self, date: str | None = None, brief: bool = True,
+                      limit: int = 50, offset: int = 0,
+                      keyword: str | None = None) -> tuple[list[dict], int]:
+        cols = self._BRIEF_COLS_ARCHIVE if brief else "*"
+        where, params = "WHERE project_dir=?", [self.project_dir]
+        if date:
+            where += " AND date=?"
             params.append(date)
-        sql += " ORDER BY date DESC, issue_number ASC"
-        return [dict(r) for r in self.conn.execute(sql, params).fetchall()]
+        if keyword:
+            where += " AND title LIKE ?"
+            params.append(f"%{keyword}%")
+        total = self.conn.execute(f"SELECT COUNT(*) as c FROM issues_archive {where}", params).fetchone()["c"]
+        sql = f"SELECT {cols} FROM issues_archive {where} ORDER BY date DESC, issue_number ASC LIMIT ? OFFSET ?"
+        rows = [dict(r) for r in self.conn.execute(sql, params + [limit, offset]).fetchall()]
+        return rows, total
 
     def get_by_id(self, issue_id: int) -> dict | None:
         row = self.conn.execute("SELECT * FROM issues WHERE id=? AND project_dir=?",
@@ -108,8 +171,13 @@ class IssueRepo:
         return dict(row) if row else None
 
     def get_archived_by_id(self, issue_id: int) -> dict | None:
-        row = self.conn.execute("SELECT * FROM issues_archive WHERE id=? AND project_dir=?",
-                                (issue_id, self.project_dir)).fetchone()
+        row = self.conn.execute(
+            "SELECT * FROM issues_archive WHERE original_issue_id=? AND project_dir=?",
+            (issue_id, self.project_dir)
+        ).fetchone()
+        if not row:
+            row = self.conn.execute("SELECT * FROM issues_archive WHERE id=? AND project_dir=?",
+                                    (issue_id, self.project_dir)).fetchone()
         return dict(row) if row else None
 
     def delete(self, issue_id: int) -> dict | None:
@@ -150,5 +218,19 @@ class IssueRepo:
             if len(results) >= top_k:
                 break
         return results
+
+    def list_by_feature_id(self, feature_id: str) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM issues WHERE project_dir=? AND feature_id=?",
+            (self.project_dir, feature_id)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def count_active_by_feature(self, feature_id: str) -> int:
+        row = self.conn.execute(
+            "SELECT COUNT(*) as c FROM issues WHERE project_dir=? AND feature_id=?",
+            (self.project_dir, feature_id)
+        ).fetchone()
+        return row["c"]
 
 

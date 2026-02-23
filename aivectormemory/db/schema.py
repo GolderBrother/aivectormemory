@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS issues_archive (
     feature_id TEXT NOT NULL DEFAULT '',
     parent_id INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT '',
+    original_issue_id INTEGER NOT NULL DEFAULT 0,
     archived_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 )"""
@@ -99,6 +100,8 @@ INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)",
     "CREATE INDEX IF NOT EXISTS idx_memories_source ON memories(source)",
     "CREATE INDEX IF NOT EXISTS idx_user_memories_tags ON user_memories(tags)",
+    "CREATE INDEX IF NOT EXISTS idx_tasks_archive_project ON tasks_archive(project_dir)",
+    "CREATE INDEX IF NOT EXISTS idx_tasks_archive_feature ON tasks_archive(feature_id)",
 ]
 
 TASKS_TABLE = """
@@ -139,9 +142,26 @@ CREATE VIRTUAL TABLE IF NOT EXISTS vec_issues_archive USING vec0(
     embedding FLOAT[384]
 )"""
 
-ALL_TABLES = [SCHEMA_VERSION_TABLE, MEMORIES_TABLE, VEC_MEMORIES_TABLE, SESSION_STATE_TABLE, ISSUES_TABLE, ISSUES_ARCHIVE_TABLE, TASKS_TABLE, USER_MEMORIES_TABLE, VEC_USER_MEMORIES_TABLE, VEC_ISSUES_ARCHIVE_TABLE]
+TASKS_ARCHIVE_TABLE = """
+CREATE TABLE IF NOT EXISTS tasks_archive (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_dir TEXT NOT NULL DEFAULT '',
+    feature_id TEXT NOT NULL DEFAULT '',
+    title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    parent_id INTEGER NOT NULL DEFAULT 0,
+    task_type TEXT NOT NULL DEFAULT 'manual',
+    metadata TEXT NOT NULL DEFAULT '{}',
+    original_task_id INTEGER NOT NULL DEFAULT 0,
+    archived_at TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+)"""
 
-CURRENT_SCHEMA_VERSION = 7
+ALL_TABLES = [SCHEMA_VERSION_TABLE, MEMORIES_TABLE, VEC_MEMORIES_TABLE, SESSION_STATE_TABLE, ISSUES_TABLE, ISSUES_ARCHIVE_TABLE, TASKS_TABLE, USER_MEMORIES_TABLE, VEC_USER_MEMORIES_TABLE, VEC_ISSUES_ARCHIVE_TABLE, TASKS_ARCHIVE_TABLE]
+
+CURRENT_SCHEMA_VERSION = 9
 
 
 def _get_schema_version(conn) -> int:
@@ -351,6 +371,16 @@ def init_db(conn, engine=None):
             print(f"[aivectormemory] v7 migration: generated embeddings for {gen_count} archived issues", file=sys.stderr)
         elif archive_count > 50:
             print(f"[aivectormemory] v7 migration: skipped embedding generation for {archive_count} archived issues (>50, lazy loading)", file=sys.stderr)
+
+    if ver < 8:
+        # v8: issues_archive 加 original_issue_id 字段
+        archive_cols = {row[1] for row in conn.execute("PRAGMA table_info(issues_archive)").fetchall()}
+        if "original_issue_id" not in archive_cols:
+            conn.execute("ALTER TABLE issues_archive ADD COLUMN original_issue_id INTEGER NOT NULL DEFAULT 0")
+
+    if ver < 9:
+        # v9: 创建 tasks_archive 表
+        conn.execute(TASKS_ARCHIVE_TABLE)
 
     for sql in INDEXES:
         conn.execute(sql)

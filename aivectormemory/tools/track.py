@@ -2,6 +2,7 @@ import json
 import re
 from datetime import date
 from aivectormemory.db.issue_repo import IssueRepo
+from aivectormemory.db.task_repo import TaskRepo
 from aivectormemory.errors import success_response
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -13,11 +14,17 @@ def _validate_date(d: str) -> str:
     return d
 
 
-def _validate_issue_id(val) -> int:
+def _resolve_issue(repo, val) -> dict:
     try:
-        return int(val)
+        num = int(val)
     except (TypeError, ValueError):
         raise ValueError(f"issue_id must be an integer, got: {val}")
+    row = repo.get_by_number(num)
+    if not row:
+        row = repo.get_archived_by_number(num)
+    if not row:
+        raise ValueError(f"Issue #{num} not found")
+    return row
 
 
 def handle_track(args, *, cm, engine=None, **_):
@@ -37,51 +44,56 @@ def handle_track(args, *, cm, engine=None, **_):
         return json.dumps(success_response(**result))
 
     elif action == "update":
-        issue_id = _validate_issue_id(args.get("issue_id"))
+        row = _resolve_issue(repo, args.get("issue_id"))
+        issue_id = row["id"]
         fields = {k: args[k] for k in ("title", "status", "content", "memory_id",
                   "description", "investigation", "root_cause", "solution",
                   "files_changed", "test_result", "notes", "feature_id") if k in args}
         result = repo.update(issue_id, **fields)
         if not result:
-            raise ValueError(f"Issue {issue_id} not found")
-        return json.dumps(success_response(issue=result))
+            raise ValueError(f"Issue #{row['issue_number']} not found")
+        brief = {k: result[k] for k in ("id", "issue_number", "title", "status", "updated_at") if k in result}
+        return json.dumps(success_response(issue=brief))
 
     elif action == "archive":
-        issue_id = _validate_issue_id(args.get("issue_id"))
+        row = _resolve_issue(repo, args.get("issue_id"))
+        issue_id = row["id"]
         content = args.get("content")
         if content:
             repo.update(issue_id, content=content)
         result = repo.archive(issue_id)
         if not result:
-            raise ValueError(f"Issue {issue_id} not found")
+            raise ValueError(f"Issue #{row['issue_number']} not found")
+        feature_id = row.get("feature_id", "")
+        if feature_id:
+            remaining = repo.count_active_by_feature(feature_id)
+            if remaining == 0:
+                task_repo = TaskRepo(cm.conn, cm.project_dir)
+                task_repo.archive_by_feature(feature_id)
         return json.dumps(success_response(**result))
 
     elif action == "delete":
-        issue_id = _validate_issue_id(args.get("issue_id"))
+        row = _resolve_issue(repo, args.get("issue_id"))
+        issue_id = row["id"]
         result = repo.delete(issue_id)
         if not result:
-            raise ValueError(f"Issue {issue_id} not found")
+            raise ValueError(f"Issue #{row['issue_number']} not found")
         return json.dumps(success_response(**result))
 
     elif action == "list":
         issue_id = args.get("issue_id")
         if issue_id is not None:
-            issue_id = _validate_issue_id(issue_id)
-            row = repo.get_by_id(issue_id)
-            if not row:
-                row = repo.get_archived_by_id(issue_id)
-            return json.dumps(success_response(issues=[row] if row else []))
+            row = _resolve_issue(repo, issue_id)
+            return json.dumps(success_response(issues=[row]))
 
         d = args.get("date")
         if d:
             _validate_date(d)
         status = args.get("status")
-        include_archived = args.get("include_archived", False)
-        issues = repo.list_by_date(date=d, status=status)
-        if include_archived:
-            archived = repo.list_archived(date=d)
-            issues = issues + archived
-        return json.dumps(success_response(issues=issues))
+        brief = args.get("brief", True)
+        limit = args.get("limit", 50)
+        issues, total = repo.list_by_date(date=d, status=status, brief=brief, limit=limit)
+        return json.dumps(success_response(issues=issues, total=total))
 
     else:
         raise ValueError(f"Unknown action: {action}")

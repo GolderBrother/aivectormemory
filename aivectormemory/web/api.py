@@ -66,14 +66,27 @@ def handle_api_request(handler, cm):
         return _json_response(handler, delete_project(cm, proj_dir))
 
     if path.startswith("/api/issues/") and len(path.split("/")) == 4:
-        iid = int(path.split("/")[3])
-        if method == "PUT":
+        inum = int(path.split("/")[3])
+        repo = IssueRepo(cm.conn, pdir)
+        row = repo.get_by_number(inum)
+        is_archived = row is None
+        if is_archived:
+            row = repo.get_archived_by_number(inum)
+        if not row:
+            return _json_response(handler, {"error": "not found"}, 404)
+        iid = row["id"]
+        if method == "GET":
+            return _json_response(handler, dict(row))
+        elif method == "PUT":
             return _json_response(handler, put_issue(handler, cm, iid, pdir))
         elif method == "DELETE":
-            return _json_response(handler, delete_issue(handler, cm, iid, pdir, params))
+            return _json_response(handler, delete_issue(handler, cm, iid, pdir, params, is_archived=is_archived))
 
     if path.startswith("/api/tasks/") and len(path.split("/")) == 4:
-        tid = int(path.split("/")[3])
+        seg = path.split("/")[3]
+        if seg == "archived" and method == "GET":
+            return _json_response(handler, get_archived_tasks(cm, params, pdir))
+        tid = int(seg)
         if method == "PUT":
             return _json_response(handler, put_task(handler, cm, tid, pdir))
         elif method == "DELETE":
@@ -251,15 +264,35 @@ def put_status(handler, cm, pdir):
 def get_issues(cm, params, pdir):
     date = params.get("date", [None])[0]
     status = params.get("status", [None])[0]
-    include_archived = params.get("include_archived", ["false"])[0] == "true"
+    keyword = params.get("keyword", [None])[0]
+    limit = int(params.get("limit", [20])[0])
+    offset = int(params.get("offset", [0])[0])
     repo = IssueRepo(cm.conn, pdir)
     if status == "archived":
-        issues = repo.list_archived(date=date)
+        issues, total = repo.list_archived(date=date, limit=limit, offset=offset, keyword=keyword)
+    elif status == "all":
+        issues, total = repo.list_all(date=date, limit=limit, offset=offset, keyword=keyword)
     elif status:
-        issues = repo.list_by_date(date=date, status=status)
+        issues, total = repo.list_by_date(date=date, status=status, limit=limit, offset=offset, keyword=keyword)
     else:
-        issues = repo.list_by_date(date=date) + repo.list_archived(date=date)
-    return {"issues": issues}
+        issues, total = repo.list_by_date(date=date, limit=limit, offset=offset, keyword=keyword)
+    task_repo = TaskRepo(cm.conn, pdir)
+    for issue in issues:
+        fid = issue.get("feature_id", "")
+        if fid:
+            all_tasks = task_repo.list_by_feature(feature_id=fid)
+            total_t, done_t = 0, 0
+            for t in all_tasks:
+                kids = t.get("children", [])
+                if kids:
+                    total_t += len(kids)
+                    done_t += sum(1 for k in kids if k["status"] == "completed")
+                else:
+                    total_t += 1
+                    if t["status"] == "completed":
+                        done_t += 1
+            issue["task_progress"] = {"total": total_t, "done": done_t}
+    return {"issues": issues, "total": total}
 
 
 def put_issue(handler, cm, iid, pdir):
@@ -317,7 +350,7 @@ def post_issue(handler, cm, pdir):
     return result
 
 
-def delete_issue(handler, cm, iid, pdir, params):
+def delete_issue(handler, cm, iid, pdir, params, is_archived=False):
     action = params.get("action", ["delete"])[0]
     repo = IssueRepo(cm.conn, pdir)
     mem_repo = MemoryRepo(cm.conn, pdir)
@@ -328,7 +361,6 @@ def delete_issue(handler, cm, iid, pdir, params):
             return {"error": "not found"}
         return result
 
-    is_archived = params.get("archived", ["false"])[0] == "true"
     if is_archived:
         result = repo.delete_archived(iid)
     else:
@@ -397,13 +429,13 @@ def get_stats(cm, pdir):
     user_count = user_repo.count()
     total_count = repo.count() + user_count
 
-    all_issues = issue_repo.list_by_date()
+    all_issues, _ = issue_repo.list_by_date()
     status_counts = {}
     for i in all_issues:
         s = i["status"]
         status_counts[s] = status_counts.get(s, 0) + 1
-    archived_issues = issue_repo.list_archived()
-    status_counts["archived"] = len(archived_issues)
+    _, archived_total = issue_repo.list_archived()
+    status_counts["archived"] = archived_total
 
     tag_counts = _merged_tag_counts(repo, user_repo, pdir)
 
@@ -743,3 +775,10 @@ def delete_tasks_by_feature(handler, cm, pdir, params):
     repo = TaskRepo(cm.conn, pdir)
     count = repo.delete_by_feature(feature_id)
     return {"deleted": count, "feature_id": feature_id}
+
+
+def get_archived_tasks(cm, params, pdir):
+    repo = TaskRepo(cm.conn, pdir)
+    feature_id = params.get("feature_id", [None])[0]
+    tasks = repo.list_archived(feature_id=feature_id)
+    return {"tasks": tasks}
