@@ -114,13 +114,6 @@ class MemoryRepo:
         self.conn.commit()
         return cur.rowcount > 0
 
-    def get_by_session_range(self, start: int, end: int, project_dir: str = "") -> list[dict]:
-        rows = self.conn.execute(
-            "SELECT * FROM memories WHERE session_id BETWEEN ? AND ? AND project_dir = ? ORDER BY created_at",
-            (start, end, project_dir)
-        ).fetchall()
-        return [dict(r) for r in rows]
-
     def get_all(self, limit: int = 100, offset: int = 0, project_dir: str | None = None) -> list[dict]:
         if project_dir is not None:
             rows = self.conn.execute(
@@ -142,12 +135,6 @@ class MemoryRepo:
         if project_dir is not None:
             return self.conn.execute("SELECT COUNT(*) FROM memories WHERE project_dir=?", (project_dir,)).fetchone()[0]
         return self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
-    def count_by_source(self, source: str) -> int:
-        row = self.conn.execute(
-            "SELECT COUNT(*) as cnt FROM memories WHERE project_dir=? AND source=?",
-            (self.project_dir, source)
-        ).fetchone()
-        return row["cnt"] if row else 0
     def list_by_tags(self, tags: list[str], scope: str = "all", project_dir: str = "",
                      limit: int = 100, source: str | None = None) -> list[dict]:
         sql, params = "SELECT * FROM memories WHERE 1=1", []

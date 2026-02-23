@@ -282,9 +282,8 @@ def put_issue(handler, cm, iid, pdir):
             tags = body.get("tags", [])
             content = f"[问题追踪] #{result['issue_number']} {result['title']}\n{result.get('content', '')}"
             now = mem_repo._now()
-            import json as _json
             cm.conn.execute("UPDATE memories SET content=?, tags=?, updated_at=? WHERE id=?",
-                            (content, _json.dumps(tags, ensure_ascii=False), now, memory_id))
+                            (content, json.dumps(tags, ensure_ascii=False), now, memory_id))
             cm.conn.commit()
     return result
 
