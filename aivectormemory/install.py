@@ -69,6 +69,7 @@ STEERING_CONTENT = """# AIVectorMemory - 工作规则
 
 **步骤 C：`track create` 记录问题**
 - 无论大小，发现即记录，禁止先修再补
+- `content` 必填：简述问题现象和背景，禁止只传 title 留空 content
 - `status` 更新 pending
 
 **步骤 D：排查**
@@ -77,7 +78,7 @@ STEERING_CONTENT = """# AIVectorMemory - 工作规则
 - 涉及数据存储时确认数据流向
 - 禁止盲目测试，必须找到根本原因
 - 发现项目架构/约定/关键实现 → `remember`（tags: ["项目知识", ...从内容提取模块/功能关键词], scope: "project"）
-- `track update` 记录根因和方案
+- `track update` 记录根因和方案：必须填充 `investigation`（排查过程）、`root_cause`（根本原因）
 
 **步骤 E：向用户说明方案，确定流程分支**
 - 排查完成后，根据问题复杂度向用户说明方案：
@@ -97,7 +98,7 @@ STEERING_CONTENT = """# AIVectorMemory - 工作规则
 
 **步骤 G：运行测试验证**
 - 运行相关测试，禁止口头承诺
-- `track update` 记录自测结果
+- `track update` 记录自测结果：必须填充 `solution`（解决方案）、`files_changed`（修改文件）、`test_result`（自测结果）
 
 **步骤 H：等待用户验证**
 - 立即 `status({ is_blocked: true, block_reason: "修复完成等待验证" })`
@@ -133,12 +134,19 @@ STEERING_CONTENT = """# AIVectorMemory - 工作规则
 - 修复中发现新问题：不阻塞当前 → 记录继续；阻塞当前 → 先处理新问题
 - 自检：排查是否完整？数据是否准确？逻辑是否严谨？禁止"基本完成"等模糊表述
 
+**字段填充规范**（归档后必须能看到完整记录）：
+- `track create`：`content` 必填（问题现象和背景）
+- 排查后 `track update`：`investigation`（排查过程）、`root_cause`（根本原因）
+- 修复后 `track update`：`solution`（解决方案）、`files_changed`（修改文件 JSON 数组）、`test_result`（自测结果）
+- 禁止只传 title 不传 content，禁止结构化字段留空
+
 ---
 
-## 5. 代码修改检查
+## 5. 操作前检查
 
-**修改前**：`recall` 查踩坑记录 + 查看现有实现 + 确认数据流向
-**修改后**：运行测试验证 + 确认不影响其他功能
+**代码修改前**：`recall` 查踩坑记录 + 查看现有实现 + 确认数据流向
+**代码修改后**：运行测试验证 + 确认不影响其他功能
+**任何可能踩坑的操作前**（看板启动、PyPI 发布、服务重启等）：`recall`（query: 操作关键词, tags: ["踩坑"]）查踩坑记录，按记忆中的标准流程执行
 
 ---
 

@@ -341,6 +341,22 @@ Ou ajouter env dans la configuration MCP :
 
 ## 📋 Journal des Modifications
 
+### v0.2.8
+
+**Tableau de Bord Web**
+- 📋 Modal de détail des problèmes archivés : clic sur une carte archivée affiche les détails en lecture seule (tous les champs structurés : investigation/cause racine/solution/résultat de test/fichiers modifiés), bouton rouge de suppression en bas pour suppression permanente
+
+**Renforcement des Règles Steering**
+- 📝 `track create` exige désormais le champ `content` obligatoire (décrire les symptômes et le contexte du problème), interdit d'envoyer uniquement le titre
+- 📝 `track update` post-investigation exige les champs `investigation` et `root_cause`
+- 📝 `track update` post-correction exige les champs `solution`, `files_changed` et `test_result`
+- 📝 Section 4 ajoute la sous-section "Normes de Remplissage des Champs" avec les champs obligatoires par étape
+- 📝 Section 5 étendue de "Vérification de Modification de Code" à "Vérification Pré-Opération", ajout de la règle recall des enregistrements d'erreurs avant démarrage du tableau de bord/publication PyPI/redémarrage de service
+- 📝 `install.py` STEERING_CONTENT synchronisé avec toutes les modifications
+
+**Optimisation des Outils**
+- 🔧 Description du champ `content` de l'outil `track` changée de "contenu d'investigation" à "description du problème (obligatoire lors du create)"
+
 ### v0.2.7
 
 **Extraction automatique de mots-clés**

@@ -342,6 +342,22 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 ## 📋 更新日志
 
+### v0.2.8
+
+**Web 看板**
+- 📋 归档问题详情弹窗：点击归档卡片弹出只读详情（含所有结构化字段：排查过程/根因/解决方案/自测结果/修改文件），底部红色删除按钮支持永久删除归档记录
+
+**Steering 规则强化**
+- 📝 `track create` 强制要求 `content` 必填（简述问题现象和背景），禁止只传 title 留空
+- 📝 排查后 `track update` 强制要求填充 `investigation`（排查过程）和 `root_cause`（根本原因）
+- 📝 修复后 `track update` 强制要求填充 `solution`（解决方案）、`files_changed`（修改文件）、`test_result`（自测结果）
+- 📝 第 4 节新增「字段填充规范」子节，明确各阶段必填字段
+- 📝 第 5 节从「代码修改检查」扩展为「操作前检查」，新增看板启动/PyPI 发布/服务重启等操作前 recall 踩坑记录规则
+- 📝 `install.py` STEERING_CONTENT 同步全部变更
+
+**工具优化**
+- 🔧 `track` 工具 `content` 字段描述从「排查内容」改为「问题描述（create 时必填，简述问题现象和背景）」
+
 ### v0.2.7
 
 **自动关键词提取**

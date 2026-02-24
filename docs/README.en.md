@@ -341,6 +341,22 @@ Or add env to MCP config:
 
 ## 📋 Changelog
 
+### v0.2.8
+
+**Web Dashboard**
+- 📋 Archived issue detail modal: click archived card to view read-only details (all structured fields: investigation/root cause/solution/test result/files changed), red delete button at bottom for permanent deletion
+
+**Steering Rules Enhancement**
+- 📝 `track create` now requires `content` field (describe issue symptoms and context), no more title-only entries
+- 📝 Post-investigation `track update` requires `investigation` and `root_cause` fields
+- 📝 Post-fix `track update` requires `solution`, `files_changed`, and `test_result` fields
+- 📝 Section 4 adds "Field Population Standards" subsection with per-stage required fields
+- 📝 Section 5 expanded from "Code Modification Check" to "Pre-Operation Check", adds recall pitfall records before dashboard startup/PyPI publish/service restart
+- 📝 `install.py` STEERING_CONTENT synced with all changes
+
+**Tool Optimization**
+- 🔧 `track` tool `content` field description changed from "investigation content" to "issue description (required on create)"
+
 ### v0.2.7
 
 **Automatic Keyword Extraction**

@@ -77,7 +77,7 @@ TOOL_DEFINITIONS = [
                 "date": {"type": "string", "description": "日期 YYYY-MM-DD"},
                 "issue_id": {"type": "integer", "description": "list 时传入可查单条问题（活跃+归档都查），避免拉全量列表"},
                 "status": {"type": "string", "enum": ["pending", "in_progress", "completed"]},
-                "content": {"type": "string", "description": "排查内容"},
+                "content": {"type": "string", "description": "问题描述（create 时必填，简述问题现象和背景）"},
                 "parent_id": {"type": "integer", "description": "父问题 ID（create，可选，默认 0）"},
                 "description": {"type": "string", "description": "问题描述"},
                 "investigation": {"type": "string", "description": "排查过程（逐步记录）"},

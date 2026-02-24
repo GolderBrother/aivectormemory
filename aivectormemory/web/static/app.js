@@ -113,7 +113,7 @@ function renderIssueCard(i) {
         <button class="btn btn--ghost-danger btn--sm" onclick="event.stopPropagation();deleteIssueAction(${i.issue_number}, false)">${t('delete')}</button>
       </div>`;
   return `
-  <div class="issue-card" style="cursor:pointer" onclick="${isArchived ? `this.classList.toggle('expanded')` : `if(!event.target.closest('.issue-card__actions')){editIssueAction(${i.issue_number})}else{this.classList.toggle('expanded')}`}">
+  <div class="issue-card" style="cursor:pointer" onclick="${isArchived ? `if(!event.target.closest('.issue-card__actions')){viewArchivedIssue(${i.issue_number})}` : `if(!event.target.closest('.issue-card__actions')){editIssueAction(${i.issue_number})}else{this.classList.toggle('expanded')}`}">
     <div class="issue-card__header">
       <div class="issue-card__title"><span class="issue-card__number">#${i.issue_number}</span>${escHtml(i.title)}${parentTag}${i.task_progress ? `<span class="issue-task-progress">${i.task_progress.done}/${i.task_progress.total}</span>` : ''}</div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -723,6 +723,43 @@ window.deleteIssueAction = (issueNum, isArchived) => {
     toast(t('issueDeleted'));
     loadIssues();
   });
+};
+
+window.viewArchivedIssue = async (issueNum) => {
+  const i = await api(`issues/${issueNum}`);
+  if (!i || i.error) return;
+  const fields = [
+    ['issueDescription', i.description],
+    ['issueInvestigation', i.investigation],
+    ['issueRootCause', i.root_cause],
+    ['issueSolution', i.solution],
+    ['issueTestResult', i.test_result],
+    ['issueNotes', i.notes],
+  ];
+  const fieldsHtml = fields.map(([key, val]) => val ? `<div class="issue-field"><span class="issue-field__label">${t(key)}</span><div class="issue-field__value">${escHtml(val)}</div></div>` : '').join('');
+  const filesHtml = i.files_changed && i.files_changed !== '[]' ? `<div class="issue-field"><span class="issue-field__label">${t('issueFilesChanged')}</span><div class="issue-field__value">${renderFilesChanged(i.files_changed)}</div></div>` : '';
+  const featureHtml = i.feature_id ? `<div class="issue-field"><span class="issue-field__label">${t('issueFeatureId')}</span><div class="issue-field__value"><code>${escHtml(i.feature_id)}</code></div></div>` : '';
+  const contentHtml = i.content ? `<div class="issue-field"><span class="issue-field__label">${t('issueContent')}</span><div class="issue-field__value" style="white-space:pre-wrap">${escHtml(i.content)}</div></div>` : '';
+  const meta = `${i.date} · ${t('archivedAt')} ${i.archived_at || ''}`;
+  showModal(`#${i.issue_number} ${escHtml(i.title)}`, `
+    <div class="issue-structured">
+      ${contentHtml}${fieldsHtml}${filesHtml}${featureHtml}
+    </div>
+    <div class="issue-card__meta" style="margin-top:12px">${meta}</div>
+  `);
+  const saveBtn = $('#modal-save');
+  saveBtn.style.display = 'block';
+  saveBtn.textContent = t('delete');
+  saveBtn.className = 'btn btn--danger';
+  saveBtn.onclick = () => {
+    hideModal();
+    showConfirm(t('confirmDeleteIssue'), async () => {
+      const res = await api(`issues/${issueNum}?action=delete&archived=true`, { method: 'DELETE' });
+      if (res.error) { toast(res.error, 'error'); return; }
+      toast(t('issueDeleted'));
+      loadIssues();
+    });
+  };
 };
 
 let tagData = [], tagSelected = new Set();

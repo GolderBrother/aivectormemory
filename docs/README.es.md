@@ -341,6 +341,22 @@ O agregar env en la configuración MCP:
 
 ## 📋 Registro de Cambios
 
+### v0.2.8
+
+**Panel Web**
+- 📋 Modal de detalle de problemas archivados: clic en tarjeta archivada muestra detalles de solo lectura (todos los campos estructurados: investigación/causa raíz/solución/resultado de prueba/archivos modificados), botón rojo de eliminación en la parte inferior para eliminación permanente
+
+**Refuerzo de Reglas Steering**
+- 📝 `track create` ahora requiere campo `content` obligatorio (describir síntomas y contexto del problema), prohibido enviar solo título
+- 📝 `track update` post-investigación requiere campos `investigation` y `root_cause`
+- 📝 `track update` post-corrección requiere campos `solution`, `files_changed` y `test_result`
+- 📝 Sección 4 añade subsección "Normas de Llenado de Campos" con campos obligatorios por etapa
+- 📝 Sección 5 expandida de "Verificación de Modificación de Código" a "Verificación Pre-Operación", añade regla de recall de registros de errores antes de inicio de panel/publicación PyPI/reinicio de servicio
+- 📝 `install.py` STEERING_CONTENT sincronizado con todos los cambios
+
+**Optimización de Herramientas**
+- 🔧 Descripción del campo `content` de la herramienta `track` cambiada de "contenido de investigación" a "descripción del problema (obligatorio en create)"
+
 ### v0.2.7
 
 **Extracción automática de palabras clave**

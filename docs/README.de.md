@@ -341,6 +341,22 @@ Oder env in der MCP-Konfiguration hinzufügen:
 
 ## 📋 Änderungsprotokoll
 
+### v0.2.8
+
+**Web-Dashboard**
+- 📋 Archivierte Problem-Detailansicht: Klick auf archivierte Karte zeigt schreibgeschützte Details (alle strukturierten Felder: Untersuchung/Ursache/Lösung/Testergebnis/geänderte Dateien), roter Lösch-Button unten für permanente Löschung
+
+**Steering-Regeln Verstärkung**
+- 📝 `track create` erfordert jetzt `content`-Feld (Problemsymptome und Kontext beschreiben), nur Titel ohne Inhalt verboten
+- 📝 `track update` nach Untersuchung erfordert `investigation` und `root_cause` Felder
+- 📝 `track update` nach Behebung erfordert `solution`, `files_changed` und `test_result` Felder
+- 📝 Abschnitt 4 fügt Unterabschnitt "Feldausfüllstandards" mit Pflichtfeldern pro Phase hinzu
+- 📝 Abschnitt 5 von "Code-Änderungsprüfung" zu "Vor-Operations-Prüfung" erweitert, recall-Regel für Fehlerprotokolle vor Dashboard-Start/PyPI-Veröffentlichung/Service-Neustart hinzugefügt
+- 📝 `install.py` STEERING_CONTENT mit allen Änderungen synchronisiert
+
+**Tool-Optimierung**
+- 🔧 `track`-Tool `content`-Feldbeschreibung von "Untersuchungsinhalt" zu "Problembeschreibung (bei create erforderlich)" geändert
+
 ### v0.2.7
 
 **Automatische Schlüsselwort-Extraktion**
