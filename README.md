@@ -484,6 +484,81 @@ export HF_ENDPOINT=https://hf-mirror.com
 
 - 初始版本：7 个 MCP 工具、Web 看板、3D 向量可视化、多语言支持
 
+## 🌐 HTTP API
+
+除了 MCP 协议，还提供了 HTTP API 接口，便于多个 Agent 直接调用。
+
+### 启动 HTTP 服务器
+
+```bash
+# 需要 Node.js 环境
+cd scripts
+node aivectormemory-http-server.js
+```
+
+服务器默认端口：`9081`
+
+### API 端点
+
+| 端点 | 方法 | 功能 |
+|------|------|------|
+| `/health` | GET | 健康检查 |
+| `/remember` | POST | 存入记忆 |
+| `/recall` | POST | 语义搜索 |
+| `/forget` | POST | 删除记忆 |
+| `/status` | POST | 会话状态 |
+| `/track` | POST | 问题跟踪 |
+| `/task` | POST | 任务管理 |
+| `/readme` | POST | README 生成 |
+| `/auto_save` | POST | 自动保存偏好 |
+
+### 使用示例
+
+```bash
+# 健康检查
+curl http://localhost:9081/health
+
+# 存入记忆
+curl -X POST http://localhost:9081/remember \
+  -H "Content-Type: application/json" \
+  -d '{"content": "记住这个项目使用 Python 3.11", "tags": ["python", "config"]}'
+
+# 语义搜索
+curl -X POST http://localhost:9081/recall \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Python 版本", "top_k": 5}'
+
+# 删除记忆
+curl -X POST http://localhost:9081/forget \
+  -H "Content-Type: application/json" \
+  -d '{"memory_id": "xxx"}'
+
+# 会话状态
+curl -X POST http://localhost:9081/status \
+  -H "Content-Type: application/json" \
+  -d '{"state": {"current_task": "开发新功能"}}'
+
+# 问题跟踪
+curl -X POST http://localhost:9081/track \
+  -H "Content-Type: application/json" \
+  -d '{"action": "create", "title": "修复 Bug", "content": "xxx"}'
+
+# 任务管理
+curl -X POST http://localhost:9081/task \
+  -H "Content-Type: application/json" \
+  -d '{"action": "batch_create", "feature_id": "feature-001", "tasks": [{"title": "任务1"}]}'
+
+# README 生成
+curl -X POST http://localhost:9081/readme \
+  -H "Content-Type: application/json" \
+  -d '{"lang": "zh-CN"}'
+
+# 自动保存偏好
+curl -X POST http://localhost:9081/auto_save \
+  -H "Content-Type: application/json" \
+  -d '{"preferences": ["喜欢用 Python", "喜欢用 TypeScript"]}'
+```
+
 ## License
 
 Apache-2.0
