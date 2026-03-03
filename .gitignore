@@ -19,6 +19,7 @@ build/
 .claude/
 .kiro/
 .shared/
+.opencode/
 .mcp.json
 CLAUDE.md
 CLAUDE.md.bak

@@ -4,13 +4,14 @@ import numpy as np
 from functools import lru_cache
 from pathlib import Path
 from aivectormemory.config import MODEL_NAME, MODEL_DIMENSION
+from aivectormemory.log import log
 
 
 class EmbeddingEngine:
     def __init__(self):
         self._session = None
         self._tokenizer = None
-        self._encode_cached = lru_cache(maxsize=1024)(self._encode_impl)
+        self._encode_cached = lru_cache(maxsize=4096)(self._encode_impl)
 
     @property
     def ready(self) -> bool:
@@ -37,9 +38,9 @@ class EmbeddingEngine:
                 str(model_path),
                 providers=["CPUExecutionProvider"]
             )
-            print(f"[aivectormemory] Embedding model loaded: {MODEL_NAME}", file=sys.stderr)
+            log.info("Embedding model loaded: %s", MODEL_NAME)
         except Exception as e:
-            print(f"[aivectormemory] Failed to load embedding model: {e}", file=sys.stderr)
+            log.error("Failed to load embedding model: %s", e)
             raise
 
     def _download_model(self, hf_hub_download) -> Path:

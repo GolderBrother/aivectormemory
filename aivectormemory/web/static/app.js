@@ -580,6 +580,7 @@ async function loadIssues() {
 }
 
 $('#issue-date').value = new Date().toISOString().slice(0, 10);
+$('#issue-status-filter').value = 'all';
 $('#issue-date').addEventListener('change', () => { state.issuePage = 1; loadIssues(); });
 $('#issue-status-filter').addEventListener('change', () => { state.issuePage = 1; loadIssues(); });
 
@@ -594,9 +595,19 @@ $('#btn-issue-all')?.addEventListener('click', () => {
 
 $('#btn-issue-today')?.addEventListener('click', () => {
   $('#issue-date').value = new Date().toISOString().slice(0, 10);
+  $('#issue-status-filter').value = 'all';
   state.issuePage = 1;
   loadIssues();
 });
+
+// status shortcut buttons
+for (const [id, val] of [['btn-issue-pending','pending'],['btn-issue-inprogress','in_progress'],['btn-issue-completed','completed'],['btn-issue-archived','archived']]) {
+  $(`#${id}`)?.addEventListener('click', () => {
+    $('#issue-status-filter').value = val;
+    state.issuePage = 1;
+    loadIssues();
+  });
+}
 
 // issue search: debounce input + clear button
 const _issueSearchHandler = debounce(() => { state.issuePage = 1; loadIssues(); }, 300);
@@ -809,7 +820,7 @@ function renderTaskCard(t_item) {
         const cDelBtn = `<span class="task-action-btn task-action-btn--danger" onclick="event.stopPropagation();deleteTaskAction(${c.id})" title="${t('deleteTask')}">✕</span>`;
         return `<div class="task-item ${TASK_STATUS_CLASSES[c.status] || ''}" data-id="${c.id}">
           <span class="task-checkbox" onclick="toggleTaskStatus(${c.id}, '${c.status}')">${c.status === 'completed' ? '☑' : c.status === 'skipped' ? '☒' : '☐'}</span>
-          <span class="task-title ${c.status === 'completed' || c.status === 'skipped' ? 'task-done' : ''}">${escHtml(c.title)}</span>
+          <span class="task-title">${escHtml(c.title)}</span>
           <span class="task-status-badge task-status--${c.status}">${t('status.' + c.status)}</span>
           <span class="task-actions-group">${cEditBtn}${cDelBtn}</span>
         </div>`;
@@ -818,7 +829,7 @@ function renderTaskCard(t_item) {
   }
   return `<div class="task-item ${cls}" data-id="${t_item.id}">
     <span class="task-checkbox" onclick="toggleTaskStatus(${t_item.id}, '${t_item.status}')">${t_item.status === 'completed' ? '☑' : t_item.status === 'skipped' ? '☒' : '☐'}</span>
-    <span class="task-title ${t_item.status === 'completed' || t_item.status === 'skipped' ? 'task-done' : ''}">${escHtml(t_item.title)}</span>
+    <span class="task-title">${escHtml(t_item.title)}</span>
     <span class="task-status-badge task-status--${t_item.status}">${t('status.' + t_item.status)}</span>
     <span class="task-actions-group">${editBtn}${delBtn}</span>
   </div>`;

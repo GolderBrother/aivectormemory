@@ -1,16 +1,20 @@
 import sqlite3
 import sqlite_vec
+from contextlib import contextmanager
 from pathlib import Path
 from aivectormemory.config import get_db_path
+
+# 模块级事务标志，ConnectionManager.transaction() 设置，BaseRepo._commit() 检查
+_in_transaction = False
 
 
 class ConnectionManager:
     def __init__(self, project_dir: str | None = None):
-        self._db_path = get_db_path()
-        self.project_dir = str(Path(project_dir or Path.cwd()).resolve())
+        self._db_path: Path = get_db_path()
+        self.project_dir: str = str(Path(project_dir or Path.cwd()).resolve())
         self._conn: sqlite3.Connection | None = None
 
-    def _ensure_dir(self):
+    def _ensure_dir(self) -> None:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
 
     def _connect(self) -> sqlite3.Connection:
@@ -40,7 +44,21 @@ class ConnectionManager:
             self._conn = self._connect()
         return self._conn
 
-    def close(self):
+    @contextmanager
+    def transaction(self):
+        """批量事务：块内不自动 commit，退出时统一 commit 或 rollback"""
+        global _in_transaction
+        _in_transaction = True
+        try:
+            yield
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
+        finally:
+            _in_transaction = False
+
+    def close(self) -> None:
         if self._conn:
             self._conn.close()
             self._conn = None

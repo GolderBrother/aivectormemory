@@ -1,5 +1,7 @@
+import json
 import sys
 from aivectormemory import __version__
+from aivectormemory.log import log
 from aivectormemory.protocol import (
     read_message, write_message, make_result, make_error,
     METHOD_NOT_FOUND, INVALID_PARAMS, INTERNAL_ERROR, SERVER_ERROR
@@ -7,6 +9,24 @@ from aivectormemory.protocol import (
 from aivectormemory.db import ConnectionManager, init_db
 from aivectormemory.embedding.engine import EmbeddingEngine
 from aivectormemory.tools import TOOL_DEFINITIONS, TOOL_HANDLERS
+from aivectormemory.errors import AIVectorMemoryError
+
+
+def _smart_truncate(text: str, max_len: int = 30000) -> str:
+    if len(text) <= max_len:
+        return text
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            for key in ("memories", "issues", "tasks", "results"):
+                if key in data and isinstance(data[key], list) and len(data[key]) > 1:
+                    while len(json.dumps(data, ensure_ascii=False)) > max_len and len(data[key]) > 1:
+                        data[key].pop()
+                    data["_truncated"] = True
+                    return json.dumps(data, ensure_ascii=False)
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return text[:max_len] + "\n[truncated: output too large, use specific query to narrow results]"
 
 
 class MCPServer:
@@ -54,7 +74,7 @@ class MCPServer:
             (self._session_id, self.cm.project_dir)
         )
         self.cm.conn.commit()
-        print(f"[aivectormemory] Session {self._session_id} started, project={self.cm.project_dir}", file=sys.stderr)
+        log.info("Session %d started, project=%s", self._session_id, self.cm.project_dir)
         write_message(make_result(req_id, {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
@@ -73,16 +93,16 @@ class MCPServer:
             return
         try:
             result = handler(args, cm=self.cm, engine=self.engine, session_id=self._session_id)
-            text = str(result)
-            if len(text) > 30000:
-                text = text[:30000] + "\n[truncated: output too large, use specific query to narrow results]"
+            text = _smart_truncate(str(result))
             write_message(make_result(req_id, {
                 "content": [{"type": "text", "text": text}]
             }))
         except ValueError as e:
             write_message(make_error(req_id, INVALID_PARAMS, str(e)))
+        except AIVectorMemoryError as e:
+            write_message(make_error(req_id, INVALID_PARAMS, str(e)))
         except Exception as e:
-            print(f"[aivectormemory] Error in {name}: {e}", file=sys.stderr)
+            log.error("Error in %s: %s", name, e)
             write_message(make_error(req_id, SERVER_ERROR, str(e)))
 
     def handle_notifications_initialized(self, req_id, params):
@@ -95,7 +115,7 @@ class MCPServer:
             "tools/list": self.handle_tools_list,
             "tools/call": self.handle_tools_call,
         }
-        print("[aivectormemory] MCP Server started (stdio)", file=sys.stderr)
+        log.info("MCP Server started (stdio)")
         while True:
             msg = read_message()
             if msg is None:
@@ -110,11 +130,11 @@ class MCPServer:
                 elif req_id is not None:
                     write_message(make_error(req_id, METHOD_NOT_FOUND, f"Unknown method: {method}"))
             except Exception as e:
-                print(f"[aivectormemory] Unhandled error in {method}: {e}", file=sys.stderr)
+                log.error("Unhandled error in %s: %s", method, e)
                 if req_id is not None:
                     write_message(make_error(req_id, INTERNAL_ERROR, str(e)))
         self.cm.close()
-        print("[aivectormemory] MCP Server stopped", file=sys.stderr)
+        log.info("MCP Server stopped")
 
 
 def run_server(project_dir: str | None = None):

@@ -9,3 +9,11 @@ class AIVectorMemoryError(Exception):
         self.error = error
         self.details = details
         super().__init__(error)
+
+class NotFoundError(AIVectorMemoryError):
+    def __init__(self, resource: str, identifier):
+        super().__init__(f"{resource} {identifier} not found")
+
+class DuplicateError(AIVectorMemoryError):
+    def __init__(self, resource: str, identifier):
+        super().__init__(f"{resource} {identifier} already exists")

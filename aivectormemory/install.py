@@ -108,6 +108,7 @@ STEERING_CONTENT = """# AIVectorMemory - 工作规则
 - `track archive` 归档
 - `status` 清除阻塞（is_blocked: false）
 - 有踩坑价值 → `remember`（tags: ["踩坑", ...从问题内容提取关键词], scope: "project"，含错误现象、根因、正确做法。示例：看板启动失败 → tags: ["踩坑", "看板", "启动", "dashboard"]）
+- **回流检查**：如果当前 track 是在执行 task 过程中发现的 bug（有关联 feature_id 或正在执行 spec 任务），归档后必须回到第6节继续执行下一个子任务，调用 `task update` 更新当前任务状态并同步 tasks.md
 - 会话结束前 → `auto_save` 自动提取偏好
 
 ---
@@ -160,6 +161,8 @@ STEERING_CONTENT = """# AIVectorMemory - 工作规则
 3. 用户确认需求后，编写 `design.md`：设计文档，技术方案和架构
 4. 用户确认设计后，编写 `tasks.md`：任务文档，拆分为最小可执行单元
 5. 同步调用 `task`（action: batch_create, feature_id: spec 目录名）将任务写入数据库
+
+**⚠️ 步骤 2→3→4 严格顺序执行，禁止跳过 design.md 直接写 tasks.md。每步必须等用户确认后才能进入下一步。**
 6. 按任务文档顺序执行，每完成一个子任务调用 `task`（action: update）更新状态（自动同步 tasks.md checkbox）
 7. 全部完成后调用 `task`（action: list）确认无遗漏
 
@@ -169,7 +172,7 @@ STEERING_CONTENT = """# AIVectorMemory - 工作规则
 
 **任务文档规范**：
 - 每个任务细化到最小可执行单元，使用 `- [ ]` 标记状态
-- 每完成一个子任务立即 `task update`，禁止批量完成后统一更新
+- 每完成一个子任务必须立即执行：① `task update` 更新状态 ② 确认 tasks.md 对应条目已更新为 `[x]`。完成一个处理一个，禁止批量完成后统一更新
 - 整理任务文档时必须打开设计文档逐条核对，发现遗漏先补充再执行
 - 按顺序执行禁止跳过，禁止用"后续迭代"跳过任务
 - **开始任务前必须先检查 tasks.md，确认该任务之前的所有任务已标记 `[x]`，有未完成的前置任务必须先完成，禁止跳组执行**

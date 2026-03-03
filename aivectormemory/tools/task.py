@@ -3,7 +3,8 @@ import re
 from pathlib import Path
 from aivectormemory.db.task_repo import TaskRepo
 from aivectormemory.db.issue_repo import IssueRepo
-from aivectormemory.errors import success_response
+from aivectormemory.errors import success_response, NotFoundError
+from aivectormemory.utils import validate_title
 
 _SPEC_DIRS = [".kiro/specs", ".cursor/specs", ".windsurf/specs", ".trae/specs", "docs/specs"]
 
@@ -40,6 +41,12 @@ def handle_task(args, *, cm, **_):
         tasks = args.get("tasks", [])
         if not tasks:
             raise ValueError("tasks array is required for batch_create")
+        for t in tasks:
+            if t.get("title", "").strip():
+                validate_title(t["title"].strip())
+            for child in t.get("children", []):
+                if child.get("title", "").strip():
+                    validate_title(child["title"].strip())
         result = repo.batch_create(feature_id, tasks, task_type=args.get("task_type", "manual"))
         return json.dumps(success_response(**result))
 
@@ -50,7 +57,7 @@ def handle_task(args, *, cm, **_):
         fields = {k: args[k] for k in ("status", "title") if k in args}
         result = repo.update(int(task_id), **fields)
         if not result:
-            raise ValueError(f"Task {task_id} not found")
+            raise NotFoundError("Task", task_id)
         if "status" in fields:
             _sync_tasks_md(cm.project_dir, result["feature_id"], result["title"], fields["status"] == "completed")
         feature_id = result.get("feature_id", "")
@@ -83,7 +90,7 @@ def handle_task(args, *, cm, **_):
             raise ValueError("task_id is required for delete")
         result = repo.delete(int(task_id))
         if not result:
-            raise ValueError(f"Task {task_id} not found")
+            raise NotFoundError("Task", task_id)
         return json.dumps(success_response(deleted=result))
 
     else:

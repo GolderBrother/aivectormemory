@@ -4,6 +4,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from aivectormemory.db import ConnectionManager, init_db
 from aivectormemory.web.api import handle_api_request
+from aivectormemory.log import log
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -90,7 +91,7 @@ class WebHandler(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         if self.quiet:
             return
-        print(f"[aivectormemory-web] {args[0]}", file=sys.stderr)
+        log.debug("%s", args[0])
 
 
 def run_web(project_dir: str | None = None, port: int = 9080, bind: str = "127.0.0.1", token: str | None = None, quiet: bool = False, daemon: bool = False):
@@ -102,27 +103,27 @@ def run_web(project_dir: str | None = None, port: int = 9080, bind: str = "127.0
         engine = EmbeddingEngine()
         engine.load()
         cm._embedding_engine = engine
-        print("[aivectormemory] Semantic search enabled", file=sys.stderr)
+        log.info("Semantic search enabled")
     except Exception as e:
         cm._embedding_engine = None
-        print(f"[aivectormemory] Semantic search disabled: {e}", file=sys.stderr)
+        log.warning("Semantic search disabled: %s", e)
 
     WebHandler.cm = cm
     WebHandler.auth_token = token
     WebHandler.quiet = quiet
 
     server = NoFQDNHTTPServer((bind, port), WebHandler)
-    print(f"[aivectormemory] Web dashboard: http://{bind}:{port}", file=sys.stderr)
+    log.info("Web dashboard: http://%s:%d", bind, port)
     if token:
-        print(f"[aivectormemory] Token auth enabled", file=sys.stderr)
+        log.info("Token auth enabled")
 
     if daemon:
         if not hasattr(os, "fork"):
-            print("[aivectormemory] --daemon not supported on Windows", file=sys.stderr)
+            log.error("--daemon not supported on Windows")
             sys.exit(1)
         pid = os.fork()
         if pid > 0:
-            print(f"[aivectormemory] Running in background (PID {pid})", file=sys.stderr)
+            log.info("Running in background (PID %d)", pid)
             sys.exit(0)
         os.setsid()
         sys.stdin.close()

@@ -499,7 +499,7 @@ body {
 .task-item.status--done .task-checkbox { color: #22C55E; }
 .task-item.status--skipped .task-checkbox { color: #EF4444; }
 .task-title { flex: 1; font-size: 13px; color: #CBD5E1; }
-.task-title.task-done { text-decoration: line-through; color: #64748B; }
+.task-title.task-done { color: #64748B; }
 .task-status-badge { font-size: 11px; padding: 2px 8px; border-radius: 8px; font-weight: 500; flex-shrink: 0; }
 .task-status--pending { background: rgba(234,179,8,0.15); color: #EAB308; }
 .task-status--in_progress { background: rgba(59,130,246,0.15); color: #3B82F6; }

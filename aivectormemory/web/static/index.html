@@ -180,8 +180,8 @@
         <div class="toolbar-group">
           <input type="date" id="issue-date" class="filter-input">
           <select id="issue-status-filter" class="filter-select">
-            <option value="" data-i18n="allStatus">全部状态</option>
-            <option value="all" data-i18n="allIncludeArchived">全部（含归档）</option>
+            <option value="all" data-i18n="allIncludeArchived" selected>全部（含归档）</option>
+            <option value="" data-i18n="activeOnly">活跃</option>
             <option value="pending" data-i18n="status.pending">待处理</option>
             <option value="in_progress" data-i18n="status.in_progress">进行中</option>
             <option value="completed" data-i18n="status.completed">已完成</option>
@@ -196,6 +196,12 @@
         <button class="btn btn--primary btn--sm" id="btn-issue-search" data-i18n="search">搜索</button>
         <button class="btn btn--outline btn--sm" id="btn-issue-all" data-i18n="viewAll">查看全部</button>
         <button class="btn btn--outline btn--sm" id="btn-issue-today" data-i18n="today">今天</button>
+        <div class="toolbar-group">
+          <button class="btn btn--outline btn--sm" id="btn-issue-pending" data-i18n="status.pending">待处理</button>
+          <button class="btn btn--outline btn--sm" id="btn-issue-inprogress" data-i18n="status.in_progress">进行中</button>
+          <button class="btn btn--outline btn--sm" id="btn-issue-completed" data-i18n="status.completed">已完成</button>
+          <button class="btn btn--outline btn--sm" id="btn-issue-archived" data-i18n="status.archived">已归档</button>
+        </div>
         <div class="toolbar-right">
           <button class="btn btn--primary btn--sm" id="btn-add-issue" data-i18n="addIssue">添加问题</button>
         </div>

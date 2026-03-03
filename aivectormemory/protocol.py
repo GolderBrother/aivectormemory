@@ -1,5 +1,6 @@
 import json
 import sys
+from aivectormemory.log import log
 
 
 def read_message() -> dict | None:
@@ -12,7 +13,7 @@ def read_message() -> dict | None:
     try:
         return json.loads(line)
     except json.JSONDecodeError:
-        print(f"[aivectormemory] Skipped non-JSON input: {line[:120]}", file=sys.stderr)
+        log.warning("Skipped non-JSON input: %s", line[:120])
         return read_message()
 
 

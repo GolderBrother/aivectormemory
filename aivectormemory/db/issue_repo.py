@@ -1,15 +1,12 @@
 import json
-from datetime import datetime
+
+from .base import BaseRepo
 
 
-class IssueRepo:
+class IssueRepo(BaseRepo):
     def __init__(self, conn, project_dir: str = "", engine=None):
-        self.conn = conn
-        self.project_dir = project_dir
+        super().__init__(conn, project_dir)
         self.engine = engine
-
-    def _now(self) -> str:
-        return datetime.now().astimezone().isoformat()
 
     def _next_number(self) -> int:
         r1 = self.conn.execute(
@@ -50,7 +47,7 @@ class IssueRepo:
             "INSERT INTO issues (project_dir, issue_number, date, title, status, content, memory_id, parent_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (self.project_dir, num, date, title, "pending", content, memory_id, parent_id, now, now)
         )
-        self.conn.commit()
+        self._commit()
         return {"id": cur.lastrowid, "issue_number": num, "date": date}
 
     def update(self, issue_id: int, **fields) -> dict | None:
@@ -67,7 +64,7 @@ class IssueRepo:
         updates["updated_at"] = self._now()
         set_clause = ",".join(f"{k}=?" for k in updates)
         self.conn.execute(f"UPDATE issues SET {set_clause} WHERE id=?", [*updates.values(), issue_id])
-        self.conn.commit()
+        self._commit()
         return dict(self.conn.execute("SELECT * FROM issues WHERE id=?", (issue_id,)).fetchone())
 
     def archive(self, issue_id: int) -> dict | None:
@@ -98,7 +95,7 @@ class IssueRepo:
                 (archive_id, json.dumps(emb))
             )
         self.conn.execute("DELETE FROM issues WHERE id=?", (issue_id,))
-        self.conn.commit()
+        self._commit()
         return {"issue_id": issue_id, "archived_at": now, "memory_id": r.get("memory_id", "")}
 
     _BRIEF_COLS = "id, issue_number, date, title, status, feature_id, created_at"
@@ -118,7 +115,7 @@ class IssueRepo:
             where += " AND title LIKE ?"
             params.append(f"%{keyword}%")
         total = self.conn.execute(f"SELECT COUNT(*) as c FROM issues {where}", params).fetchone()["c"]
-        sql = f"SELECT {cols} FROM issues {where} ORDER BY date DESC, issue_number ASC LIMIT ? OFFSET ?"
+        sql = f"SELECT {cols} FROM issues {where} ORDER BY issue_number DESC LIMIT ? OFFSET ?"
         rows = [dict(r) for r in self.conn.execute(sql, params + [limit, offset]).fetchall()]
         return rows, total
 
@@ -140,7 +137,7 @@ class IssueRepo:
         total = self.conn.execute(cnt, p + p2).fetchone()["c"]
         sql = (f"SELECT {cols}, NULL as archived_at FROM issues {w1} UNION ALL "
                f"SELECT {cols}, archived_at FROM issues_archive {w2} "
-               f"ORDER BY date DESC, issue_number ASC LIMIT ? OFFSET ?")
+               f"ORDER BY issue_number DESC LIMIT ? OFFSET ?")
         rows = [dict(r) for r in self.conn.execute(sql, p + p2 + [limit, offset]).fetchall()]
         for r in rows:
             if r.get("archived_at"):
@@ -161,7 +158,7 @@ class IssueRepo:
             where += " AND title LIKE ?"
             params.append(f"%{keyword}%")
         total = self.conn.execute(f"SELECT COUNT(*) as c FROM issues_archive {where}", params).fetchone()["c"]
-        sql = f"SELECT {cols} FROM issues_archive {where} ORDER BY date DESC, issue_number ASC LIMIT ? OFFSET ?"
+        sql = f"SELECT {cols} FROM issues_archive {where} ORDER BY issue_number DESC LIMIT ? OFFSET ?"
         rows = [dict(r) for r in self.conn.execute(sql, params + [limit, offset]).fetchall()]
         return rows, total
 
@@ -187,7 +184,7 @@ class IssueRepo:
             return None
         memory_id = row["memory_id"] if "memory_id" in row.keys() else ""
         self.conn.execute("DELETE FROM issues WHERE id=?", (issue_id,))
-        self.conn.commit()
+        self._commit()
         return {"issue_id": issue_id, "deleted": True, "memory_id": memory_id}
 
     def delete_archived(self, archive_id: int) -> dict | None:
@@ -197,7 +194,7 @@ class IssueRepo:
             return None
         memory_id = row["memory_id"] if "memory_id" in row.keys() else ""
         self.conn.execute("DELETE FROM issues_archive WHERE id=?", (archive_id,))
-        self.conn.commit()
+        self._commit()
         return {"archive_id": archive_id, "deleted": True, "memory_id": memory_id}
 
     def search_archive_by_vector(self, embedding: list[float], top_k: int = 5) -> list[dict]:

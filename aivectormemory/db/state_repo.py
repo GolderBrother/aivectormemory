@@ -1,14 +1,9 @@
 import json
-from datetime import datetime
+
+from .base import BaseRepo
 
 
-class StateRepo:
-    def __init__(self, conn, project_dir: str = ""):
-        self.conn = conn
-        self.project_dir = project_dir
-
-    def _now(self) -> str:
-        return datetime.now().astimezone().isoformat()
+class StateRepo(BaseRepo):
 
     def get(self) -> dict | None:
         row = self.conn.execute("SELECT * FROM session_state WHERE project_dir=?", (self.project_dir,)).fetchone()
@@ -50,5 +45,5 @@ class StateRepo:
             self.conn.execute(f"UPDATE session_state SET {set_clause} WHERE project_dir=?",
                               [*fields.values(), self.project_dir])
 
-        self.conn.commit()
+        self._commit()
         return self.get()

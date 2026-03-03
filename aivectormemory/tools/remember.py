@@ -4,17 +4,14 @@ from aivectormemory.db.memory_repo import MemoryRepo
 from aivectormemory.db.user_memory_repo import UserMemoryRepo
 from aivectormemory.errors import success_response
 from aivectormemory.tools.keywords import extract_keywords
+from aivectormemory.utils import validate_content, validate_tags
 
 
 def handle_remember(args, *, cm, engine, session_id, **_):
-    content = args.get("content")
-    tags = args.get("tags", [])
+    content = validate_content(args.get("content", ""))
+    tags = validate_tags(args.get("tags", []))
     scope = args.get("scope", "project")
 
-    if not content:
-        raise ValueError("content is required")
-    if not isinstance(tags, list):
-        raise ValueError("tags must be a list")
     if len(content) > 5000:
         content = content[:5000]
 

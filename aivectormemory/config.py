@@ -1,14 +1,14 @@
 import os
 from pathlib import Path
 
-DB_DIR = Path.home() / ".aivectormemory"
-DB_NAME = "memory.db"
-MODEL_NAME = "intfloat/multilingual-e5-small"
-MODEL_DIMENSION = 384
-DEDUP_THRESHOLD = 0.95
+DB_DIR = Path(os.getenv("AIVM_DB_DIR", str(Path.home() / ".aivectormemory")))
+DB_NAME = os.getenv("AIVM_DB_NAME", "memory.db")
+MODEL_NAME = os.getenv("AIVM_MODEL_NAME", "intfloat/multilingual-e5-small")
+MODEL_DIMENSION = int(os.getenv("AIVM_MODEL_DIMENSION", "384"))
+DEDUP_THRESHOLD = float(os.getenv("AIVM_DEDUP_THRESHOLD", "0.95"))
 USER_SCOPE_DIR = "@user@"
-DEFAULT_TOP_K = 5
-WEB_DEFAULT_PORT = 9080
+DEFAULT_TOP_K = int(os.getenv("AIVM_DEFAULT_TOP_K", "5"))
+WEB_DEFAULT_PORT = int(os.getenv("AIVM_WEB_PORT", "9080"))
 
 
 OLD_DB_DIR = Path.home() / ".devmemory"

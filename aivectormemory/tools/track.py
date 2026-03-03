@@ -3,7 +3,8 @@ import re
 from datetime import date
 from aivectormemory.db.issue_repo import IssueRepo
 from aivectormemory.db.task_repo import TaskRepo
-from aivectormemory.errors import success_response
+from aivectormemory.errors import success_response, NotFoundError
+from aivectormemory.utils import validate_title, validate_content
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -23,7 +24,7 @@ def _resolve_issue(repo, val) -> dict:
     if not row:
         row = repo.get_archived_by_number(num)
     if not row:
-        raise ValueError(f"Issue #{num} not found")
+        raise NotFoundError("Issue", f"#{num}")
     return row
 
 
@@ -36,11 +37,12 @@ def handle_track(args, *, cm, engine=None, **_):
     today = date.today().isoformat()
 
     if action == "create":
-        title = args.get("title")
-        if not title:
-            raise ValueError("title is required for create")
+        title = validate_title(args.get("title", ""))
+        content = args.get("content", "")
+        if content:
+            validate_content(content)
         d = _validate_date(args.get("date", today))
-        result = repo.create(d, title, args.get("content", ""), args.get("memory_id", ""), args.get("parent_id", 0))
+        result = repo.create(d, title, content, args.get("memory_id", ""), args.get("parent_id", 0))
         return json.dumps(success_response(**result))
 
     elif action == "update":
