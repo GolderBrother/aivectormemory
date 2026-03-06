@@ -1,16 +1,21 @@
 🌐 [简体中文](../README.md) | 繁體中文 | [English](README.en.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | [日本語](README.ja.md)
 
 <p align="center">
-  <h1 align="center">🧠 AIVectorMemory</h1>
-  <p align="center">
-    <strong>為 AI 程式助手裝上記憶 — 跨會話持久化記憶 MCP Server</strong>
-  </p>
-  <p align="center">
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
-    <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
-    <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
-  </p>
+  <img src="logo.png" alt="AIVectorMemory Logo" width="200">
+</p>
+<h1 align="center">AIVectorMemory</h1>
+<p align="center">
+  <strong>為 AI 程式助手裝上記憶 — 跨會話持久化記憶 MCP Server</strong>
+</p>
+<p align="center">
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
+  <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
+</p>
+<p align="center">
+  QQ群：1085682431 &nbsp;|&nbsp; 微信：changhuibiz<br>
+  源碼加QQ群或微信獲取
 </p>
 
 ---
@@ -123,7 +128,6 @@ uvx aivectormemory install
 | VSCode | `.vscode/mcp.json` |
 | Trae | `.trae/mcp.json` |
 | OpenCode | `opencode.json` |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
 </details>
 
@@ -239,6 +243,14 @@ run web --port 9080 --quiet --daemon  # 背景執行（macOS/Linux）
   <em>統計概覽 & 向量網路視覺化</em>
 </p>
 
+<p align="center">
+  <img src="20260306234753_6_1635.jpg" alt="微信群" width="280">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="8_1635.jpg" alt="QQ群：1085682431" width="280">
+  <br>
+  <em>微信掃碼加群 &nbsp;|&nbsp; QQ掃碼加群</em>
+</p>
+
 ## ⚡ 搭配 Steering 規則
 
 AIVectorMemory 是儲存層，透過 Steering 規則告訴 AI **何時、如何**呼叫這些工具。
@@ -251,7 +263,7 @@ AIVectorMemory 是儲存層，透過 Steering 規則告訴 AI **何時、如何*
 | Cursor | `.cursor/rules/aivectormemory.md` | `.cursor/hooks.json` |
 | Claude Code | `CLAUDE.md`（追加） | `.claude/settings.json` |
 | Windsurf | `.windsurf/rules/aivectormemory.md` | `.windsurf/hooks.json` |
-| VSCode | `.github/copilot-instructions.md`（追加） | — |
+| VSCode | `.github/copilot-instructions.md`（追加） | `.claude/settings.json` |
 | Trae | `.trae/rules/aivectormemory.md` | — |
 | OpenCode | `AGENTS.md`（追加） | `.opencode/plugins/*.js` |
 
@@ -293,7 +305,7 @@ AIVectorMemory 是儲存層，透過 Steering 規則告訴 AI **何時、如何*
 </details>
 
 <details>
-<summary>🔗 Hooks 設定範例（Kiro 專屬，自動產生）</summary>
+<summary>🔗 Hooks 設定範例（全 IDE 支援，自動產生）</summary>
 
 會話結束自動儲存已移除，開發流程檢查（`.kiro/hooks/dev-workflow-check.kiro.hook`）：
 

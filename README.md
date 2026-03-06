@@ -245,9 +245,11 @@ run web --port 9080 --quiet --daemon  # 后台运行（macOS/Linux）
 </p>
 
 <p align="center">
-  <img src="docs/20260306234753_6_1635.jpg" alt="微信群：AI向量永久记忆-Aivectormemory" width="300">
+  <img src="docs/20260306234753_6_1635.jpg" alt="微信群" width="280">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/8_1635.jpg" alt="QQ群：1085682431" width="280">
   <br>
-  <em>微信扫码加群</em>
+  <em>微信扫码加群 &nbsp;|&nbsp; QQ扫码加群</em>
 </p>
 
 ## ⚡ 配合 Steering 规则

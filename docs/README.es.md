@@ -1,16 +1,21 @@
 🌐 [简体中文](../README.md) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | Español | [Deutsch](README.de.md) | [Français](README.fr.md) | [日本語](README.ja.md)
 
 <p align="center">
-  <h1 align="center">🧠 AIVectorMemory</h1>
-  <p align="center">
-    <strong>Dale memoria a tu asistente de IA — Servidor MCP de memoria persistente entre sesiones</strong>
-  </p>
-  <p align="center">
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
-    <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
-    <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
-  </p>
+  <img src="logo.png" alt="AIVectorMemory Logo" width="200">
+</p>
+<h1 align="center">AIVectorMemory</h1>
+<p align="center">
+  <strong>Dale memoria a tu asistente de IA — Servidor MCP de memoria persistente entre sesiones</strong>
+</p>
+<p align="center">
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
+  <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
+</p>
+<p align="center">
+  Grupo QQ: 1085682431 &nbsp;|&nbsp; WeChat: changhuibiz<br>
+  Contáctenos para obtener el código fuente
 </p>
 
 ---
@@ -123,7 +128,6 @@ uvx aivectormemory install
 | VSCode | `.vscode/mcp.json` |
 | Trae | `.trae/mcp.json` |
 | OpenCode | `opencode.json` |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
 </details>
 
@@ -239,6 +243,14 @@ Visita `http://localhost:9080` en tu navegador.
   <em>Resumen y Visualización de Red Vectorial</em>
 </p>
 
+<p align="center">
+  <img src="20260306234753_6_1635.jpg" alt="Grupo WeChat" width="280">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="8_1635.jpg" alt="Grupo QQ: 1085682431" width="280">
+  <br>
+  <em>Escanea para WeChat &nbsp;|&nbsp; Escanea para QQ</em>
+</p>
+
 ## ⚡ Combinación con Reglas Steering
 
 AIVectorMemory es la capa de almacenamiento. Usa reglas Steering para indicar a la IA **cuándo y cómo** llamar estas herramientas.
@@ -251,7 +263,7 @@ Ejecutar `run install` genera automáticamente las reglas Steering y la configur
 | Cursor | `.cursor/rules/aivectormemory.md` | `.cursor/hooks.json` |
 | Claude Code | `CLAUDE.md` (añadido) | `.claude/settings.json` |
 | Windsurf | `.windsurf/rules/aivectormemory.md` | `.windsurf/hooks.json` |
-| VSCode | `.github/copilot-instructions.md` (añadido) | — |
+| VSCode | `.github/copilot-instructions.md` (añadido) | `.claude/settings.json` |
 | Trae | `.trae/rules/aivectormemory.md` | — |
 | OpenCode | `AGENTS.md` (añadido) | `.opencode/plugins/*.js` |
 

@@ -1,16 +1,21 @@
 🌐 [简体中文](../README.md) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | 日本語
 
 <p align="center">
-  <h1 align="center">🧠 AIVectorMemory</h1>
-  <p align="center">
-    <strong>AIコーディングアシスタントに記憶を — セッション間永続記憶MCPサーバー</strong>
-  </p>
-  <p align="center">
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
-    <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
-    <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
-  </p>
+  <img src="logo.png" alt="AIVectorMemory Logo" width="200">
+</p>
+<h1 align="center">AIVectorMemory</h1>
+<p align="center">
+  <strong>AIコーディングアシスタントに記憶を — セッション間永続記憶MCPサーバー</strong>
+</p>
+<p align="center">
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
+  <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
+</p>
+<p align="center">
+  QQグループ：1085682431 &nbsp;|&nbsp; WeChat：changhuibiz<br>
+  ソースコードはQQグループまたはWeChatでお問い合わせください
 </p>
 
 ---
@@ -123,7 +128,6 @@ uvx aivectormemory install
 | VSCode | `.vscode/mcp.json` |
 | Trae | `.trae/mcp.json` |
 | OpenCode | `opencode.json` |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
 </details>
 
@@ -239,6 +243,14 @@ run web --port 9080 --quiet --daemon  # バックグラウンド実行（macOS/L
   <em>統計概要 & ベクトルネットワーク可視化</em>
 </p>
 
+<p align="center">
+  <img src="20260306234753_6_1635.jpg" alt="WeChatグループ" width="280">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="8_1635.jpg" alt="QQグループ：1085682431" width="280">
+  <br>
+  <em>WeChatグループに参加 &nbsp;|&nbsp; QQグループに参加</em>
+</p>
+
 ## ⚡ Steeringルールとの組み合わせ
 
 AIVectorMemoryはストレージ層です。Steeringルールを使ってAIに**いつ、どのように**ツールを呼び出すかを指示します。
@@ -251,7 +263,7 @@ AIVectorMemoryはストレージ層です。Steeringルールを使ってAIに**
 | Cursor | `.cursor/rules/aivectormemory.md` | `.cursor/hooks.json` |
 | Claude Code | `CLAUDE.md`（追記） | `.claude/settings.json` |
 | Windsurf | `.windsurf/rules/aivectormemory.md` | `.windsurf/hooks.json` |
-| VSCode | `.github/copilot-instructions.md`（追記） | — |
+| VSCode | `.github/copilot-instructions.md`（追記） | `.claude/settings.json` |
 | Trae | `.trae/rules/aivectormemory.md` | — |
 | OpenCode | `AGENTS.md`（追記） | `.opencode/plugins/*.js` |
 
