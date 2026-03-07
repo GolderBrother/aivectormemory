@@ -5,7 +5,6 @@ import (
 	"net"
 	"os/exec"
 	"runtime"
-	"syscall"
 	"time"
 )
 
@@ -25,7 +24,7 @@ func (l *Launcher) Start() error {
 	}
 
 	cmd := exec.Command(l.PythonPath, "-m", "aivectormemory", "web", "--port", fmt.Sprintf("%d", l.Port))
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	setProcAttr(cmd)
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 
@@ -46,8 +45,7 @@ func (l *Launcher) Start() error {
 
 func (l *Launcher) Stop() error {
 	if l.cmd != nil && l.cmd.Process != nil {
-		// Kill process group
-		syscall.Kill(-l.cmd.Process.Pid, syscall.SIGTERM)
+		killProcess(l.cmd)
 		l.cmd = nil
 	}
 	return nil
@@ -91,11 +89,6 @@ func openBrowser(url string) {
 func (l *Launcher) Detach() {
 	// Process is already detached via Setpgid
 	l.cmd = nil
-}
-
-func init() {
-	// Ensure SysProcAttr is available on current platform
-	_ = &syscall.SysProcAttr{}
 }
 
 // GetPID returns the PID of the running web dashboard, if any
