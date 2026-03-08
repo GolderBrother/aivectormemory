@@ -37,3 +37,7 @@ htmlcov/
 
 # Screenshots (Playwright)
 tests/screenshots/
+
+# Root screenshots & Playwright MCP
+*.png
+.playwright-mcp/
