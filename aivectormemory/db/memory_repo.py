@@ -31,7 +31,8 @@ class MemoryRepo(BaseMemoryRepo):
         return not source or mem.get("source", "manual") == source
 
     def list_by_tags(self, tags: list[str], scope: str = "all", project_dir: str = "",
-                     limit: int = 100, source: str | None = None, **_) -> list[dict]:
+                     limit: int = 100, source: str | None = None,
+                     tags_mode: str = "all", **_) -> list[dict]:
         sql, params = "SELECT * FROM memories WHERE 1=1", []
         if scope == "project":
             sql += " AND project_dir=?"
@@ -39,9 +40,14 @@ class MemoryRepo(BaseMemoryRepo):
         if source:
             sql += " AND source=?"
             params.append(source)
-        for tag in tags:
-            sql += " AND id IN (SELECT memory_id FROM memory_tags WHERE tag=?)"
-            params.append(tag)
+        if tags_mode == "any":
+            sql += " AND (" + " OR ".join(
+                ["id IN (SELECT memory_id FROM memory_tags WHERE tag=?)" for _ in tags]) + ")"
+            params.extend(tags)
+        else:
+            for tag in tags:
+                sql += " AND id IN (SELECT memory_id FROM memory_tags WHERE tag=?)"
+                params.append(tag)
         sql += " ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
         return [dict(r) for r in self.conn.execute(sql, params).fetchall()]

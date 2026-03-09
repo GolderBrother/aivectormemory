@@ -1,9 +1,9 @@
-import json
 import re
 from datetime import date
 from aivectormemory.db.issue_repo import IssueRepo
 from aivectormemory.db.task_repo import TaskRepo
 from aivectormemory.errors import success_response, NotFoundError
+from aivectormemory.i18n.responses import fmt, to_json
 from aivectormemory.utils import validate_title, validate_content
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -43,7 +43,8 @@ def handle_track(args, *, cm, engine=None, **_):
             validate_content(content)
         d = _validate_date(args.get("date", today))
         result = repo.create(d, title, content, args.get("memory_id", ""), args.get("parent_id", 0))
-        return json.dumps(success_response(**result))
+        key = "track.create.dedup" if result.get("deduplicated") else "track.create"
+        return fmt(key, issue_number=result["issue_number"], date=result["date"])
 
     elif action == "update":
         row = _resolve_issue(repo, args.get("issue_id"))
@@ -54,8 +55,7 @@ def handle_track(args, *, cm, engine=None, **_):
         result = repo.update(issue_id, **fields)
         if not result:
             raise ValueError(f"Issue #{row['issue_number']} not found")
-        brief = {k: result[k] for k in ("id", "issue_number", "title", "status", "updated_at") if k in result}
-        return json.dumps(success_response(issue=brief))
+        return fmt("track.update", issue_number=result["issue_number"], status=result.get("status", ""))
 
     elif action == "archive":
         row = _resolve_issue(repo, args.get("issue_id"))
@@ -72,7 +72,7 @@ def handle_track(args, *, cm, engine=None, **_):
             if remaining == 0:
                 task_repo = TaskRepo(cm.conn, cm.project_dir)
                 task_repo.archive_by_feature(feature_id)
-        return json.dumps(success_response(**result))
+        return fmt("track.archive", archived_at=result.get("archived_at", ""))
 
     elif action == "delete":
         row = _resolve_issue(repo, args.get("issue_id"))
@@ -80,13 +80,13 @@ def handle_track(args, *, cm, engine=None, **_):
         result = repo.delete(issue_id)
         if not result:
             raise ValueError(f"Issue #{row['issue_number']} not found")
-        return json.dumps(success_response(**result))
+        return fmt("track.delete")
 
     elif action == "list":
         issue_id = args.get("issue_id")
         if issue_id is not None:
             row = _resolve_issue(repo, issue_id)
-            return json.dumps(success_response(issues=[row]))
+            return to_json(success_response(issues=[row]))
 
         d = args.get("date")
         if d:
@@ -95,7 +95,7 @@ def handle_track(args, *, cm, engine=None, **_):
         brief = args.get("brief", True)
         limit = args.get("limit", 50)
         issues, total = repo.list_by_date(date=d, status=status, brief=brief, limit=limit)
-        return json.dumps(success_response(issues=issues, total=total))
+        return to_json(success_response(issues=issues, total=total))
 
     else:
         raise ValueError(f"Unknown action: {action}")

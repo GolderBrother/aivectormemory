@@ -1,23 +1,23 @@
-🌐 [简体中文](../README.md) | 繁體中文 | [English](README.en.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | [日本語](README.ja.md)
+🌐 [简体中文](README.zh-CN.md) | 繁體中文 | [English](../README.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | [日本語](README.ja.md)
 
 <p align="center">
-  <h1 align="center">🧠 AIVectorMemory</h1>
-  <p align="center">
-    <strong>為 AI 程式助手裝上記憶 — 跨會話持久化記憶 MCP Server</strong>
-  </p>
-  <p align="center">
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
-    <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
-    <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
-  </p>
+  <img src="logo.png" alt="AIVectorMemory Logo" width="200">
 </p>
-
+<h1 align="center">AIVectorMemory</h1>
+<p align="center">
+  <strong>為 AI 程式助手裝上記憶 — 跨會話持久化記憶 MCP Server</strong>
+</p>
+<p align="center">
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
+  <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
+</p>
 ---
 
-> **你是否也有這樣的困擾？** 每開一個新會話，AI 就像換了個人 — 昨天剛教會它的專案規範今天又忘了，踩過的坑還會再踩一遍，開發到一半的進度全部歸零。你只能一遍遍複製貼上專案背景，眼睜睜看著 Token 被重複消耗。
+> **你還在用 CLAUDE.md / MEMORY.md 當記憶？** 這類 Markdown 檔案記憶模式有致命缺陷：檔案越寫越大，每次會話全量注入吃掉大量 Token；內容只能關鍵詞匹配，搜「資料庫逾時」找不到「MySQL 連線池踩坑」；多專案共用一個檔案互相污染；沒有任務追蹤，開發進度全靠人腦記；更別提 200 行截斷、手動維護、無法去重合併這些日常痛點了。
 >
-> **AIVectorMemory 讓 AI 擁有長期記憶。** 所有專案知識、踩坑經驗、開發決策、任務進度，跨會話永久保存在本地向量資料庫中。新會話自動恢復上下文，語義搜尋精準召回，Token 消耗直降 50%+。
+> **AIVectorMemory 是完全不同的方案。** 本地向量資料庫儲存，語義搜尋精準召回（用詞不同也能匹配），按需檢索只載入相關記憶（Token 消耗直降 50%+），多專案自動隔離互不干擾，內建問題追蹤 + 任務管理讓 AI 全自動管理開發流程。所有資料永久保存在你的電腦上，零雲端依賴，換會話、換 IDE 都不丟。
 
 ## ✨ 核心特性
 
@@ -32,6 +32,11 @@
 | 🔌 **全 IDE 通吃** | Cursor / Kiro / Claude Code / Windsurf / VSCode / OpenCode / Trae — 一鍵安裝，開箱即用 |
 | 📁 **多專案隔離** | 一個 DB 管所有專案，自動隔離互不干擾，切換專案無感知 |
 | 🔄 **智慧去重** | 相似度 > 0.95 自動合併更新，記憶庫永遠乾淨，不會越用越亂 |
+
+<p align="center">
+  QQ群：1085682431 &nbsp;|&nbsp; 微信：changhuibiz<br>
+  共同参与项目开发加QQ群或微信交流
+</p>
 
 ## 🏗️ 架構
 
@@ -123,7 +128,6 @@ uvx aivectormemory install
 | VSCode | `.vscode/mcp.json` |
 | Trae | `.trae/mcp.json` |
 | OpenCode | `opencode.json` |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
 </details>
 
@@ -216,7 +220,7 @@ run web --port 9080 --quiet          # 屏蔽請求日誌
 run web --port 9080 --quiet --daemon  # 背景執行（macOS/Linux）
 ```
 
-瀏覽器存取 `http://localhost:9080`
+瀏覽器存取 `http://localhost:9080`，預設用戶名 `admin`，密碼 `admin123`（首次登入後可在設定中修改）
 
 - 多專案切換，記憶瀏覽/搜尋/編輯/刪除/匯出/匯入
 - 語義搜尋（向量相似度匹配）
@@ -228,6 +232,12 @@ run web --port 9080 --quiet --daemon  # 背景執行（macOS/Linux）
 - 🌐 多語言支援（简体中文 / 繁體中文 / English / Español / Deutsch / Français / 日本語）
 
 <p align="center">
+  <img src="003.png" alt="登入介面" width="100%">
+  <br>
+  <em>登入介面</em>
+</p>
+
+<p align="center">
   <img src="dashboard-projects.png" alt="專案選擇" width="100%">
   <br>
   <em>專案選擇</em>
@@ -237,6 +247,14 @@ run web --port 9080 --quiet --daemon  # 背景執行（macOS/Linux）
   <img src="dashboard-overview.png" alt="統計概覽 & 向量網路視覺化" width="100%">
   <br>
   <em>統計概覽 & 向量網路視覺化</em>
+</p>
+
+<p align="center">
+  <img src="20260306234753_6_1635.jpg" alt="微信群" width="280">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="8_1635.jpg" alt="QQ群：1085682431" width="280">
+  <br>
+  <em>微信掃碼加群 &nbsp;|&nbsp; QQ掃碼加群</em>
 </p>
 
 ## ⚡ 搭配 Steering 規則
@@ -251,7 +269,7 @@ AIVectorMemory 是儲存層，透過 Steering 規則告訴 AI **何時、如何*
 | Cursor | `.cursor/rules/aivectormemory.md` | `.cursor/hooks.json` |
 | Claude Code | `CLAUDE.md`（追加） | `.claude/settings.json` |
 | Windsurf | `.windsurf/rules/aivectormemory.md` | `.windsurf/hooks.json` |
-| VSCode | `.github/copilot-instructions.md`（追加） | — |
+| VSCode | `.github/copilot-instructions.md`（追加） | `.claude/settings.json` |
 | Trae | `.trae/rules/aivectormemory.md` | — |
 | OpenCode | `AGENTS.md`（追加） | `.opencode/plugins/*.js` |
 
@@ -293,7 +311,7 @@ AIVectorMemory 是儲存層，透過 Steering 規則告訴 AI **何時、如何*
 </details>
 
 <details>
-<summary>🔗 Hooks 設定範例（Kiro 專屬，自動產生）</summary>
+<summary>🔗 Hooks 設定範例（全 IDE 支援，自動產生）</summary>
 
 會話結束自動儲存已移除，開發流程檢查（`.kiro/hooks/dev-workflow-check.kiro.hook`）：
 
@@ -340,6 +358,14 @@ export HF_ENDPOINT=https://hf-mirror.com
 | Web | 原生 HTTPServer + Vanilla JS |
 
 ## 📋 更新日誌
+
+### v1.0.3
+
+**recall 搜尋優化**
+- 🔍 `recall` 新增 `tags_mode` 參數：`any`（OR 匹配）/ `all`（AND 匹配）
+- 🔍 `query + tags` 時預設 OR 匹配（匹配任一標籤即進入候選），解決多標籤搜尋漏結果問題
+- 🔍 僅 `tags` 時保持 AND 匹配（精確分類瀏覽），向後相容
+- 📝 Steering 規則更新搜尋規範，按搜尋目的選標籤，禁止所有搜尋都帶「踩坑」
 
 ### v0.2.8
 

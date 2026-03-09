@@ -204,20 +204,21 @@ def import_memories(handler, cm, pdir):
         tags_str = json.dumps(tags, ensure_ascii=False) if isinstance(tags, list) else tags
         scope = item.get("scope", "project")
         embedding = item.get("embedding")
+        if not embedding:
+            from aivectormemory.embedding.engine import EmbeddingEngine
+            embedding = EmbeddingEngine().encode(item.get("content", ""))
         if scope == "user":
             cm.conn.execute(
                 "INSERT INTO user_memories (id, content, tags, source, session_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
                 (mid, item.get("content", ""), tags_str, item.get("source", "manual"),
                  item.get("session_id", 0), item.get("created_at", now), now))
-            if embedding:
-                cm.conn.execute("INSERT INTO vec_user_memories (id, embedding) VALUES (?,?)", (mid, json.dumps(embedding)))
+            cm.conn.execute("INSERT INTO vec_user_memories (id, embedding) VALUES (?,?)", (mid, json.dumps(embedding)))
         else:
             cm.conn.execute(
                 "INSERT INTO memories (id, content, tags, scope, project_dir, session_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
                 (mid, item.get("content", ""), tags_str, scope,
                  item.get("project_dir", pdir), item.get("session_id", 0), item.get("created_at", now), now))
-            if embedding:
-                cm.conn.execute("INSERT INTO vec_memories (id, embedding) VALUES (?,?)", (mid, json.dumps(embedding)))
+            cm.conn.execute("INSERT INTO vec_memories (id, embedding) VALUES (?,?)", (mid, json.dumps(embedding)))
         imported += 1
     cm.conn.commit()
     return {"imported": imported, "skipped": skipped}

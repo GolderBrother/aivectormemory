@@ -1,23 +1,23 @@
-🌐 [简体中文](../README.md) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [Español](README.es.md) | Deutsch | [Français](README.fr.md) | [日本語](README.ja.md)
+🌐 [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [English](../README.md) | [Español](README.es.md) | Deutsch | [Français](README.fr.md) | [日本語](README.ja.md)
 
 <p align="center">
-  <h1 align="center">🧠 AIVectorMemory</h1>
-  <p align="center">
-    <strong>Gib deinem KI-Programmierassistenten ein Gedächtnis — Sitzungsübergreifender persistenter Speicher MCP Server</strong>
-  </p>
-  <p align="center">
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
-    <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
-    <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
-  </p>
+  <img src="logo.png" alt="AIVectorMemory Logo" width="200">
 </p>
-
+<h1 align="center">AIVectorMemory</h1>
+<p align="center">
+  <strong>Gib deinem KI-Programmierassistenten ein Gedächtnis — Sitzungsübergreifender persistenter Speicher MCP Server</strong>
+</p>
+<p align="center">
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
+  <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
+</p>
 ---
 
-> **Kommt dir das bekannt vor?** Jede neue Sitzung startet deine KI von Null — Projektkonventionen, die du ihr gestern beigebracht hast? Vergessen. Fehler, die sie schon gemacht hat? Macht sie wieder. Halbfertige Arbeit? Weg. Du kopierst immer wieder den Projektkontext und siehst zu, wie Tokens verbrannt werden.
+> **Nutzt du immer noch CLAUDE.md / MEMORY.md als Gedächtnis?** Dieser Markdown-Datei-Ansatz hat fatale Schwächen: Die Datei wird immer größer, jede Sitzung injiziert alles und verbraucht massiv Tokens; Inhalte unterstützen nur Stichwortsuche — suche „Datenbank-Timeout" und du findest nicht „MySQL Connection Pool Fallstrick"; eine Datei für mehrere Projekte führt zu gegenseitiger Kontamination; es gibt kein Aufgaben-Tracking, der Entwicklungsfortschritt existiert nur in deinem Kopf; ganz zu schweigen von der 200-Zeilen-Kürzung, manueller Pflege und der Unmöglichkeit, Duplikate zu erkennen oder zusammenzuführen.
 >
-> **AIVectorMemory gibt deiner KI ein Langzeitgedächtnis.** Alles Projektwissen, Fehlerprotokolle, Entwicklungsentscheidungen und Aufgabenfortschritt werden dauerhaft in einer lokalen Vektordatenbank gespeichert. Neue Sitzungen stellen den Kontext automatisch wieder her, semantische Suche ruft genau das Richtige ab, und der Token-Verbrauch sinkt um 50%+.
+> **AIVectorMemory ist ein grundlegend anderer Ansatz.** Lokale Vektordatenbank-Speicherung mit semantischer Suche für präzisen Abruf (findet Übereinstimmungen auch bei unterschiedlicher Wortwahl), bedarfsgesteuerter Abruf lädt nur relevante Erinnerungen (Token-Verbrauch sinkt um 50%+), automatische Multi-Projekt-Isolation ohne Interferenz, und integriertes Problem-Tracking + Aufgabenverwaltung, die der KI ermöglicht, deinen Entwicklungsworkflow vollständig zu automatisieren. Alle Daten werden dauerhaft auf deinem Rechner gespeichert — null Cloud-Abhängigkeit, nichts geht verloren beim Wechsel von Sitzungen oder IDEs.
 
 ## ✨ Kernfunktionen
 
@@ -32,6 +32,11 @@
 | 🔌 **Alle IDEs** | Cursor / Kiro / Claude Code / Windsurf / VSCode / OpenCode / Trae — Ein-Klick-Installation, sofort einsatzbereit |
 | 📁 **Multi-Projekt-Isolation** | Eine DB für alle Projekte, automatisch isoliert ohne Interferenz, nahtloser Projektwechsel |
 | 🔄 **Intelligente Deduplizierung** | Ähnlichkeit > 0.95 führt automatisch zusammen, Wissensspeicher bleibt sauber — wird nie unübersichtlich |
+
+<p align="center">
+  QQ群：1085682431 &nbsp;|&nbsp; 微信：changhuibiz<br>
+  共同参与项目开发加QQ群或微信交流
+</p>
 
 ## 🏗️ Architektur
 
@@ -123,7 +128,6 @@ uvx aivectormemory install
 | VSCode | `.vscode/mcp.json` |
 | Trae | `.trae/mcp.json` |
 | OpenCode | `opencode.json` |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
 </details>
 
@@ -216,7 +220,7 @@ run web --port 9080 --quiet          # Anfrage-Logs unterdrücken
 run web --port 9080 --quiet --daemon  # Im Hintergrund ausführen (macOS/Linux)
 ```
 
-Besuche `http://localhost:9080` im Browser.
+Besuche `http://localhost:9080` im Browser. Standardbenutzername `admin`, Passwort `admin123` (kann nach der ersten Anmeldung in den Einstellungen geändert werden).
 
 - Mehrere Projekte wechseln, Erinnerungen durchsuchen/bearbeiten/löschen/exportieren/importieren
 - Semantische Suche (Vektorähnlichkeits-Matching)
@@ -228,6 +232,12 @@ Besuche `http://localhost:9080` im Browser.
 - 🌐 Mehrsprachige Unterstützung (简体中文 / 繁體中文 / English / Español / Deutsch / Français / 日本語)
 
 <p align="center">
+  <img src="003.png" alt="Anmeldung" width="100%">
+  <br>
+  <em>Anmeldung</em>
+</p>
+
+<p align="center">
   <img src="dashboard-projects.png" alt="Projektauswahl" width="100%">
   <br>
   <em>Projektauswahl</em>
@@ -237,6 +247,14 @@ Besuche `http://localhost:9080` im Browser.
   <img src="dashboard-overview.png" alt="Übersicht & Vektornetzwerk-Visualisierung" width="100%">
   <br>
   <em>Übersicht & Vektornetzwerk-Visualisierung</em>
+</p>
+
+<p align="center">
+  <img src="20260306234753_6_1635.jpg" alt="WeChat-Gruppe" width="280">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="8_1635.jpg" alt="QQ-Gruppe: 1085682431" width="280">
+  <br>
+  <em>WeChat-Gruppe beitreten &nbsp;|&nbsp; QQ-Gruppe beitreten</em>
 </p>
 
 ## ⚡ Kombination mit Steering-Regeln
@@ -251,7 +269,7 @@ AIVectorMemory ist die Speicherschicht. Verwende Steering-Regeln, um der KI mitz
 | Cursor | `.cursor/rules/aivectormemory.md` | `.cursor/hooks.json` |
 | Claude Code | `CLAUDE.md` (angehängt) | `.claude/settings.json` |
 | Windsurf | `.windsurf/rules/aivectormemory.md` | `.windsurf/hooks.json` |
-| VSCode | `.github/copilot-instructions.md` (angehängt) | — |
+| VSCode | `.github/copilot-instructions.md` (angehängt) | `.claude/settings.json` |
 | Trae | `.trae/rules/aivectormemory.md` | — |
 | OpenCode | `AGENTS.md` (angehängt) | `.opencode/plugins/*.js` |
 
@@ -340,6 +358,14 @@ Oder env in der MCP-Konfiguration hinzufügen:
 | Web | Nativer HTTPServer + Vanilla JS |
 
 ## 📋 Änderungsprotokoll
+
+### v1.0.3
+
+**recall Suchoptimierung**
+- 🔍 `recall` neuer Parameter `tags_mode`: `any` (OR-Abgleich) / `all` (AND-Abgleich)
+- 🔍 `query + tags` verwendet standardmäßig OR-Abgleich (jeder Tag-Treffer wird Kandidat), behebt fehlende Ergebnisse bei mehreren Tags
+- 🔍 Nur `tags` behält AND-Abgleich (präzise Kategorienavigation), abwärtskompatibel
+- 📝 Steering-Regeln mit Suchrichtlinien aktualisiert
 
 ### v0.2.8
 

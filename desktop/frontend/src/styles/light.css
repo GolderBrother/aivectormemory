@@ -1,0 +1,52 @@
+[data-theme="light"] {
+  --bg-primary: hsl(0 0% 98%);
+  --bg-surface: hsl(0 0% 100%);
+  --bg-sidebar: hsl(0 0% 96%);
+  --bg-input: hsl(0 0% 100%);
+  --bg-muted: hsl(240 5% 93%);
+  --bg-hover: hsl(240 5% 88%);
+  --bg-card-hover: hsl(210 100% 45% / 0.04);
+
+  --text-primary: hsl(240 10% 10%);
+  --text-secondary: hsl(240 5% 40%);
+  --text-muted: hsl(240 5% 55%);
+  --text-dim: hsl(240 5% 70%);
+  --text-heading: hsl(240 5% 25%);
+
+  --border: hsl(240 5% 85%);
+  --border-hover: hsl(240 5% 75%);
+  --border-light: hsl(240 5% 85% / 0.8);
+
+  --accent: hsl(210 100% 45%);
+  --accent-hover: hsl(210 100% 38%);
+  --accent-light: hsl(210 100% 54%);
+  --accent-bg: hsl(210 100% 45% / 0.12);
+  --accent-bg-light: hsl(210 100% 45% / 0.08);
+  --accent-bg-subtle: hsl(210 100% 45% / 0.05);
+  --accent-tag: hsl(210 100% 45% / 0.10);
+
+  --color-success: hsl(142 71% 35%);
+  --color-success-bg: hsl(142 71% 35% / 0.12);
+  --color-success-dot: hsl(142 71% 35%);
+  --color-warning: hsl(25 95% 48%);
+  --color-warning-bg: hsl(25 95% 48% / 0.12);
+  --color-error: hsl(0 84% 50%);
+  --color-error-light: hsl(0 84% 60%);
+  --color-error-bg: hsl(0 84% 50% / 0.10);
+  --color-info: hsl(210 100% 45%);
+  --color-info-bg: hsl(210 100% 45% / 0.10);
+  --color-cyan: #0891B2;
+  --color-purple: hsl(270 76% 50%);
+  --color-purple-bg: hsl(270 76% 50% / 0.10);
+
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-modal: 0 20px 60px rgba(0,0,0,0.15);
+  --shadow-focus: 0 0 0 3px hsl(210 100% 45% / 0.20);
+
+  --glass-bg: linear-gradient(145deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+  --glass-border: rgba(0,0,0,0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0,0,0,0.08);
+
+  --overlay: rgba(0,0,0,0.3);
+}

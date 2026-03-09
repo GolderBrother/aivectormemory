@@ -1,0 +1,637 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"io"
+	"net/http"
+	"os/exec"
+	"time"
+
+	"desktop/internal/auth"
+	"desktop/internal/backup"
+	"desktop/internal/db"
+	"desktop/internal/embedding"
+	"desktop/internal/settings"
+	"desktop/internal/webserver"
+
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+const AppVersion = "0.1.0"
+
+type App struct {
+	ctx       context.Context
+	database  *db.DB
+	engine    *embedding.Engine
+	settings  *settings.Settings
+	launcher  *webserver.Launcher
+	auth      *auth.Manager
+}
+
+func NewApp() *App {
+	return &App{}
+}
+
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	if a.settings == nil {
+		a.settings = settings.Load()
+	}
+
+	d, err := db.Open(a.settings.DBPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to open database: %v\n", err)
+		return
+	}
+	a.database = d
+
+	// Try loading sqlite-vec (non-fatal if not found)
+	if err := d.LoadVecExtension(); err != nil {
+		fmt.Fprintf(os.Stderr, "sqlite-vec not loaded: %v\n", err)
+	}
+
+	// Initialize embedding engine
+	a.engine = embedding.NewEngine(a.settings.PythonPath)
+
+	// Initialize auth manager
+	a.auth = auth.NewManager(d)
+
+	// Initialize web launcher
+	a.launcher = webserver.NewLauncher(a.engine.PythonPath, a.settings.WebPort)
+
+	// Restore window position if previously saved
+	if a.settings.WindowX >= 0 && a.settings.WindowY >= 0 {
+		wailsRuntime.WindowSetPosition(ctx, a.settings.WindowX, a.settings.WindowY)
+	}
+}
+
+func (a *App) shutdown(ctx context.Context) {
+	// Save window size and position
+	if a.settings != nil {
+		w, h := wailsRuntime.WindowGetSize(ctx)
+		x, y := wailsRuntime.WindowGetPosition(ctx)
+		if w > 0 && h > 0 {
+			a.settings.WindowWidth = w
+			a.settings.WindowHeight = h
+			a.settings.WindowX = x
+			a.settings.WindowY = y
+			settings.Save(a.settings)
+		}
+	}
+
+	if a.database != nil {
+		a.database.Close()
+	}
+	// Don't stop web dashboard on shutdown (detached)
+	if a.launcher != nil {
+		a.launcher.Detach()
+	}
+}
+
+// ============== Projects ==============
+
+func (a *App) GetProjects() ([]db.Project, error) {
+	return a.database.GetProjects()
+}
+
+func (a *App) AddProject(projectDir string) error {
+	return a.database.AddProject(projectDir)
+}
+
+func (a *App) DeleteProject(projectDir string) (int, error) {
+	return a.database.DeleteProject(projectDir)
+}
+
+func (a *App) GetStats(projectDir string) (map[string]interface{}, error) {
+	// Memory counts
+	projResult, _ := a.database.GetMemories("project", projectDir, "", "", "", 1, 0)
+	userResult, _ := a.database.GetMemories("user", "", "", "", "", 1, 0)
+	allResult, _ := a.database.GetMemories("all", projectDir, "", "", "", 1, 0)
+
+	// Issue status counts
+	statusCounts := map[string]int{}
+	for _, s := range []string{"pending", "in_progress", "completed"} {
+		result, _ := a.database.GetIssues(projectDir, s, "", "", 1, 0)
+		if result != nil {
+			statusCounts[s] = result.Total
+		}
+	}
+	archivedResult, _ := a.database.GetIssues(projectDir, "archived", "", "", 1, 0)
+	if archivedResult != nil {
+		statusCounts["archived"] = archivedResult.Total
+	}
+
+	// Tag counts
+	tags, _ := a.database.GetTags(projectDir, "")
+
+	projCount := 0
+	if projResult != nil {
+		projCount = projResult.Total
+	}
+	userCount := 0
+	if userResult != nil {
+		userCount = userResult.Total
+	}
+	totalCount := 0
+	if allResult != nil {
+		totalCount = allResult.Total
+	}
+
+	tagCounts := map[string]int{}
+	for _, t := range tags {
+		tagCounts[t.Name] = t.Count
+	}
+
+	return map[string]interface{}{
+		"memories": map[string]int{"project": projCount, "user": userCount, "total": totalCount},
+		"issues":   statusCounts,
+		"tags":     tagCounts,
+	}, nil
+}
+
+// ============== Memories ==============
+
+func (a *App) GetMemories(scope, projectDir, query, tag, source string, limit, offset int) (*db.MemoryListResult, error) {
+	return a.database.GetMemories(scope, projectDir, query, tag, source, limit, offset)
+}
+
+func (a *App) GetMemoryDetail(id string) (*db.Memory, error) {
+	return a.database.GetMemoryDetail(id)
+}
+
+func (a *App) UpdateMemory(id, content string, tags []string, scope string) (*db.Memory, error) {
+	return a.database.UpdateMemory(id, content, tags, scope)
+}
+
+func (a *App) DeleteMemory(id string) error {
+	return a.database.DeleteMemory(id)
+}
+
+func (a *App) DeleteMemoriesBatch(ids []string) (int, error) {
+	return a.database.DeleteMemoriesBatch(ids)
+}
+
+func (a *App) ExportMemories(scope, projectDir string) ([]db.MemoryExport, error) {
+	return a.database.ExportMemories(scope, projectDir)
+}
+
+func (a *App) ImportMemories(itemsJSON string, projectDir string) (map[string]int, error) {
+	var items []map[string]interface{}
+	if err := json.Unmarshal([]byte(itemsJSON), &items); err != nil {
+		return nil, fmt.Errorf("invalid JSON: %w", err)
+	}
+	imported, skipped, err := a.database.ImportMemories(items, projectDir)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]int{"imported": imported, "skipped": skipped}, nil
+}
+
+func (a *App) SearchMemories(query, scope, projectDir string, tags []string, topK int) ([]db.Memory, error) {
+	if a.engine == nil {
+		return nil, fmt.Errorf("embedding engine not available")
+	}
+	emb, err := a.engine.Encode(query)
+	if err != nil {
+		return nil, err
+	}
+	return a.database.SearchMemories(emb, scope, projectDir, tags, topK)
+}
+
+// ============== Issues ==============
+
+func (a *App) GetIssues(projectDir, status, date, keyword string, limit, offset int) (*db.IssueListResult, error) {
+	return a.database.GetIssues(projectDir, status, date, keyword, limit, offset)
+}
+
+func (a *App) GetIssueDetail(id int, projectDir string) (*db.Issue, error) {
+	return a.database.GetIssueDetail(id, projectDir)
+}
+
+func (a *App) CreateIssue(projectDir, date, title, content string, tags []string, parentID int) (map[string]interface{}, error) {
+	issue, dedup, err := a.database.CreateIssue(projectDir, date, title, content, tags, parentID)
+	if err != nil {
+		return nil, err
+	}
+	if dedup {
+		return map[string]interface{}{"deduplicated": true, "title": title}, nil
+	}
+	result := map[string]interface{}{
+		"id":           issue.ID,
+		"issue_number": issue.IssueNumber,
+		"title":        issue.Title,
+		"deduplicated": false,
+	}
+	return result, nil
+}
+
+func (a *App) UpdateIssue(id int, projectDir string, fieldsJSON string) (*db.Issue, error) {
+	var fields map[string]interface{}
+	json.Unmarshal([]byte(fieldsJSON), &fields)
+	return a.database.UpdateIssue(id, projectDir, fields)
+}
+
+func (a *App) ArchiveIssue(id int, projectDir string) error {
+	return a.database.ArchiveIssue(id, projectDir)
+}
+
+func (a *App) DeleteIssue(id int, projectDir string, archived bool) error {
+	return a.database.DeleteIssue(id, projectDir, archived)
+}
+
+// ============== Tasks ==============
+
+func (a *App) GetTasks(projectDir, featureID, status, keyword string) ([]db.TaskGroup, error) {
+	return a.database.GetTasks(projectDir, featureID, status, keyword)
+}
+
+func (a *App) GetArchivedTasks(projectDir, featureID string) ([]db.TaskGroup, error) {
+	return a.database.GetArchivedTasks(projectDir, featureID)
+}
+
+func (a *App) CreateTasks(projectDir, featureID, tasksJSON, taskType string) (int, error) {
+	var tasks []map[string]interface{}
+	json.Unmarshal([]byte(tasksJSON), &tasks)
+	return a.database.CreateTasks(projectDir, featureID, tasks, taskType)
+}
+
+func (a *App) UpdateTask(id int, projectDir, fieldsJSON string) (*db.Task, error) {
+	var fields map[string]interface{}
+	json.Unmarshal([]byte(fieldsJSON), &fields)
+	return a.database.UpdateTask(id, projectDir, fields)
+}
+
+func (a *App) DeleteTask(id int, projectDir string) error {
+	return a.database.DeleteTask(id, projectDir)
+}
+
+func (a *App) DeleteTasksByFeature(featureID, projectDir string) (int, error) {
+	return a.database.DeleteTasksByFeature(featureID, projectDir)
+}
+
+// ============== Tags ==============
+
+func (a *App) GetTags(projectDir, query string) ([]db.TagInfo, error) {
+	return a.database.GetTags(projectDir, query)
+}
+
+func (a *App) RenameTag(projectDir, oldName, newName string) (int, error) {
+	return a.database.RenameTag(projectDir, oldName, newName)
+}
+
+func (a *App) MergeTags(projectDir string, sourceTags []string, targetName string) (int, error) {
+	return a.database.MergeTags(projectDir, sourceTags, targetName)
+}
+
+func (a *App) DeleteTags(projectDir string, tagNames []string) (int, error) {
+	return a.database.DeleteTags(projectDir, tagNames)
+}
+
+// ============== Session Status ==============
+
+func (a *App) GetStatus(projectDir string) (*db.SessionState, error) {
+	return a.database.GetStatus(projectDir)
+}
+
+func (a *App) UpdateStatus(projectDir, fieldsJSON string, clearFields []string) (*db.SessionState, error) {
+	var fields map[string]interface{}
+	json.Unmarshal([]byte(fieldsJSON), &fields)
+	return a.database.UpdateStatus(projectDir, fields, clearFields)
+}
+
+// ============== Maintenance ==============
+
+func (a *App) HealthCheck() (*db.HealthReport, error) {
+	return a.database.HealthCheck()
+}
+
+func (a *App) GetDBStats() (*db.DBStats, error) {
+	return a.database.GetDBStats(a.settings.DBPath)
+}
+
+func (a *App) RepairMissingEmbeddings() error {
+	if a.engine == nil {
+		return fmt.Errorf("embedding engine not available")
+	}
+	return embedding.BatchRepair(a.ctx, a.database, a.engine, 50)
+}
+
+func (a *App) RebuildAllEmbeddings() error {
+	if a.engine == nil {
+		return fmt.Errorf("embedding engine not available")
+	}
+	embedding.RebuildAllEmbeddings(a.ctx, a.database, a.engine)
+	return nil
+}
+
+// ============== Backup ==============
+
+func (a *App) BackupDB() (*backup.BackupInfo, error) {
+	return backup.BackupDB(a.settings.DBPath, "")
+}
+
+func (a *App) RestoreDB(backupPath string) error {
+	return backup.RestoreDB(a.settings.DBPath, backupPath)
+}
+
+func (a *App) ListBackups() ([]backup.BackupInfo, error) {
+	return backup.ListBackups(a.settings.DBPath)
+}
+
+// ============== Web Dashboard ==============
+
+func (a *App) LaunchWebDashboard() error {
+	return a.launcher.Start()
+}
+
+func (a *App) StopWebDashboard() error {
+	return a.launcher.Stop()
+}
+
+func (a *App) IsWebDashboardRunning() bool {
+	return a.launcher.IsRunning()
+}
+
+// ============== Settings ==============
+
+func (a *App) GetSettings() *settings.Settings {
+	return a.settings
+}
+
+func (a *App) SaveSettings(s *settings.Settings) error {
+	a.settings = s
+	return settings.Save(s)
+}
+
+func (a *App) SetLanguage(lang string) error {
+	// 1. 更新桌面设置
+	a.settings.Language = lang
+	if err := settings.Save(a.settings); err != nil {
+		return fmt.Errorf("save desktop settings: %w", err)
+	}
+	// 2. 写入 Python 侧 settings.json
+	home, _ := os.UserHomeDir()
+	settingsPath := filepath.Join(home, ".aivectormemory", "settings.json")
+	pySettings := map[string]interface{}{}
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		json.Unmarshal(data, &pySettings)
+	}
+	pySettings["language"] = lang
+	data, _ := json.MarshalIndent(pySettings, "", "  ")
+	os.MkdirAll(filepath.Dir(settingsPath), 0755)
+	os.WriteFile(settingsPath, append(data, '\n'), 0644)
+	// 3. 调用 regenerate 更新所有项目文件
+	pythonPath := a.engine.PythonPath
+	if pythonPath == "" {
+		pythonPath = "python3"
+	}
+	cmd := exec.Command(pythonPath, "-m", "aivectormemory", "regenerate", "--lang", lang)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("regenerate failed: %s\n%s", err, string(output))
+	}
+	return nil
+}
+
+func (a *App) SetAutoStart(enabled bool) error {
+	return settings.SetAutoStart(enabled)
+}
+
+// ============== System ==============
+
+func (a *App) BrowseDirectory(path string) (map[string]interface{}, error) {
+	if path == "" {
+		home, _ := os.UserHomeDir()
+		path = home
+	}
+	path = expandHome(path)
+
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return map[string]interface{}{"error": "not a directory", "path": path}, nil
+	}
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return map[string]interface{}{"error": "permission denied", "path": path}, nil
+	}
+
+	var dirs []string
+	for _, e := range entries {
+		if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
+			dirs = append(dirs, e.Name())
+		}
+	}
+	sort.Strings(dirs)
+
+	return map[string]interface{}{
+		"path": strings.Replace(path, "\\", "/", -1),
+		"dirs": dirs,
+	}, nil
+}
+
+func (a *App) SelectDirectory() (string, error) {
+	dir, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "Select Project Directory",
+	})
+	return dir, err
+}
+
+func (a *App) GetPythonPath() string {
+	return a.engine.PythonPath
+}
+
+func (a *App) DetectPython() string {
+	return embedding.DetectPython()
+}
+
+// ============== Auth ==============
+
+func (a *App) Register(username, password string) error {
+	return a.auth.Register(username, password)
+}
+
+func (a *App) Login(username, password string) (map[string]string, error) {
+	token, err := a.auth.Login(username, password)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"token": token, "username": username}, nil
+}
+
+func (a *App) Logout(token string) error {
+	a.auth.Logout(token)
+	return nil
+}
+
+func (a *App) GetCurrentUser(token string) (map[string]string, error) {
+	username, err := a.auth.Verify(token)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]string{"username": username}, nil
+}
+
+// ============== Environment & Install ==============
+
+func (a *App) GetAppVersion() string {
+	return AppVersion
+}
+
+func (a *App) CheckEnvironment() map[string]interface{} {
+	result := map[string]interface{}{
+		"python_found":  false,
+		"python_path":   "",
+		"avm_installed": false,
+		"avm_version":   "",
+	}
+
+	// Find Python (reuse candidate logic from embedding.DetectPython)
+	pythonPath := a.findPython()
+	if pythonPath == "" {
+		return result
+	}
+	result["python_found"] = true
+	result["python_path"] = pythonPath
+
+	// Check aivectormemory installed + version
+	out, err := exec.Command(pythonPath, "-c",
+		"import aivectormemory; print(aivectormemory.__version__)").Output()
+	if err != nil {
+		return result
+	}
+	version := strings.TrimSpace(string(out))
+	if version != "" {
+		result["avm_installed"] = true
+		result["avm_version"] = version
+	}
+	return result
+}
+
+func (a *App) CheckUpgrade(currentAvmVersion string) map[string]interface{} {
+	result := map[string]interface{}{
+		"avm_latest":            "",
+		"avm_update_available":  false,
+		"app_latest":            "",
+		"app_update_available":  false,
+		"app_download_url":      "",
+	}
+
+	// 1. Check PyPI latest version
+	pythonPath := a.findPython()
+	if pythonPath != "" {
+		// pip install aivectormemory== triggers error with available versions
+		out, _ := exec.Command(pythonPath, "-m", "pip", "install", "aivectormemory==___").CombinedOutput()
+		outStr := string(out)
+		// Parse "from versions: 0.2.1, 0.2.2, ..., 0.2.6)"
+		if idx := strings.LastIndex(outStr, "from versions:"); idx >= 0 {
+			tail := outStr[idx+len("from versions:"):]
+			if end := strings.Index(tail, ")"); end >= 0 {
+				versions := strings.TrimSpace(tail[:end])
+				parts := strings.Split(versions, ",")
+				if len(parts) > 0 {
+					latest := strings.TrimSpace(parts[len(parts)-1])
+					result["avm_latest"] = latest
+					if latest != "" && latest != currentAvmVersion {
+						result["avm_update_available"] = true
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Check GitHub Releases latest version
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get("https://api.github.com/repos/Edlineas/aivectormemory/releases/latest")
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == 200 {
+			body, _ := io.ReadAll(resp.Body)
+			var release struct {
+				TagName string `json:"tag_name"`
+				HTMLURL string `json:"html_url"`
+			}
+			if json.Unmarshal(body, &release) == nil && release.TagName != "" {
+				appLatest := strings.TrimPrefix(release.TagName, "v")
+				result["app_latest"] = appLatest
+				result["app_download_url"] = release.HTMLURL
+				if appLatest != AppVersion {
+					result["app_update_available"] = true
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+func (a *App) InstallPackage(upgrade bool) (string, error) {
+	pythonPath := a.findPython()
+	if pythonPath == "" {
+		return "", fmt.Errorf("Python not found")
+	}
+
+	args := []string{"-m", "pip", "install"}
+	if upgrade {
+		args = append(args, "--upgrade")
+	}
+	args = append(args, "aivectormemory")
+
+	cmd := exec.Command(pythonPath, args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), fmt.Errorf("install failed: %w\n%s", err, string(output))
+	}
+	return string(output), nil
+}
+
+func (a *App) findPython() string {
+	// If settings has a custom python path, try it first
+	if a.settings != nil && a.settings.PythonPath != "" {
+		if _, err := os.Stat(a.settings.PythonPath); err == nil {
+			return a.settings.PythonPath
+		}
+	}
+	// If engine already detected one, use it
+	if a.engine != nil && a.engine.PythonPath != "" {
+		return a.engine.PythonPath
+	}
+
+	// Scan candidates (find Python, not necessarily with aivectormemory)
+	home, _ := os.UserHomeDir()
+	candidates := []string{
+		filepath.Join(home, "item", "run-memory-mcp-server", ".venv", "bin", "python3"),
+		"python3", "python",
+		"/usr/local/bin/python3",
+		"/usr/bin/python3",
+		"/opt/homebrew/bin/python3",
+	}
+	for _, py := range candidates {
+		path := py
+		if !filepath.IsAbs(path) {
+			found, err := exec.LookPath(path)
+			if err != nil {
+				continue
+			}
+			path = found
+		}
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return ""
+}
+
+func expandHome(path string) string {
+	if strings.HasPrefix(path, "~") {
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, path[1:])
+	}
+	return path
+}

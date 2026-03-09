@@ -1,0 +1,88 @@
+/* Dark theme (default) */
+:root {
+  /* Backgrounds — aligned to design mockup hsl(240 5% ...) palette */
+  --bg-primary: hsl(240 5% 12%);
+  --bg-surface: hsl(240 5% 16%);
+  --bg-sidebar: hsl(240 5% 10%);
+  --bg-input: hsl(240 5% 12%);
+  --bg-muted: hsl(240 5% 18%);
+  --bg-hover: hsl(240 5% 22%);
+  --bg-card-hover: hsl(240 5% 20%);
+
+  /* Text */
+  --text-primary: hsl(0 0% 98%);
+  --text-secondary: hsl(240 5% 64.9%);
+  --text-muted: hsl(240 5% 45%);
+  --text-dim: hsl(240 5% 35%);
+  --text-heading: hsl(0 0% 90%);
+
+  /* Borders */
+  --border: hsl(240 5% 24%);
+  --border-hover: hsl(240 5% 32%);
+  --border-light: hsl(240 5% 24% / 0.5);
+
+  /* Accent — mockup primary hsl(210 100% 54%) */
+  --accent: hsl(210 100% 54%);
+  --accent-hover: hsl(210 100% 46%);
+  --accent-light: hsl(210 100% 68%);
+  --accent-bg: hsl(210 100% 54% / 0.15);
+  --accent-bg-light: hsl(210 100% 54% / 0.10);
+  --accent-bg-subtle: hsl(210 100% 54% / 0.08);
+  --accent-tag: hsl(210 100% 54% / 0.12);
+
+  /* Status colors */
+  --color-success: hsl(142 71% 45%);
+  --color-success-bg: hsl(142 71% 45% / 0.15);
+  --color-success-dot: hsl(142 71% 45%);
+  --color-warning: hsl(25 95% 53%);
+  --color-warning-bg: hsl(25 95% 53% / 0.15);
+  --color-error: hsl(0 84% 60%);
+  --color-error-light: hsl(0 84% 68%);
+  --color-error-bg: hsl(0 84% 60% / 0.15);
+  --color-info: hsl(210 100% 68%);
+  --color-info-bg: hsl(210 100% 54% / 0.15);
+  --color-cyan: #06B6D4;
+  --color-purple: hsl(270 76% 60%);
+  --color-purple-bg: hsl(270 76% 60% / 0.15);
+
+  /* Shadows */
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.2);
+  --shadow-card-hover: 0 4px 24px rgba(0,0,0,0.3);
+  --shadow-modal: 0 20px 60px rgba(0,0,0,0.4);
+  --shadow-focus: 0 0 0 3px hsl(210 100% 54% / 0.15);
+
+  /* Glass — from mockup */
+  --glass-bg: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+  --glass-border: rgba(255,255,255,0.05);
+  --glass-shadow: 0 8px 32px 0 rgba(0,0,0,0.37);
+
+  /* Overlay */
+  --overlay: rgba(0,0,0,0.6);
+
+  /* Spacing */
+  --sidebar-width: 240px;
+  --drag-bar-h: 28px;
+  --content-padding: 28px 32px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-pill: 20px;
+
+  /* Typography */
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 32px;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}

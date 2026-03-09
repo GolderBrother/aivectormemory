@@ -30,6 +30,9 @@ def main():
     install_parser = sub.add_parser("install", help="为当前项目配置 MCP")
     install_parser.add_argument("--project-dir", dest="install_project_dir", default=None)
 
+    regen_parser = sub.add_parser("regenerate", help="切换语言并重新生成所有项目的规则文件")
+    regen_parser.add_argument("--lang", required=True, help="目标语言 (zh-CN/zh-TW/en/es/de/fr/ja)")
+
     args = parser.parse_args()
 
     if args.command == "web":
@@ -40,6 +43,9 @@ def main():
         project_dir = args.install_project_dir or args.project_dir
         from aivectormemory.install import run_install
         run_install(project_dir)
+    elif args.command == "regenerate":
+        from aivectormemory.regenerate import run_regenerate
+        run_regenerate(args.lang)
     else:
         from aivectormemory.server import run_server
         run_server(project_dir=args.project_dir)

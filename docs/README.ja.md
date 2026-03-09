@@ -1,23 +1,23 @@
-🌐 [简体中文](../README.md) | [繁體中文](README.zh-TW.md) | [English](README.en.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | 日本語
+🌐 [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [English](../README.md) | [Español](README.es.md) | [Deutsch](README.de.md) | [Français](README.fr.md) | 日本語
 
 <p align="center">
-  <h1 align="center">🧠 AIVectorMemory</h1>
-  <p align="center">
-    <strong>AIコーディングアシスタントに記憶を — セッション間永続記憶MCPサーバー</strong>
-  </p>
-  <p align="center">
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
-    <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
-    <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
-  </p>
+  <img src="logo.png" alt="AIVectorMemory Logo" width="200">
 </p>
-
+<h1 align="center">AIVectorMemory</h1>
+<p align="center">
+  <strong>AIコーディングアシスタントに記憶を — セッション間永続記憶MCPサーバー</strong>
+</p>
+<p align="center">
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
+  <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
+</p>
 ---
 
-> **こんな経験ありませんか？** 新しいセッションを開くたびに、AIはまるで別人 — 昨日教えたプロジェクト規約は今日もう忘れている、踏んだ地雷をまた踏む、途中まで進めた作業はゼロに戻る。プロジェクト背景を何度もコピペするしかなく、トークンが無駄に消費されていくのを見ているだけ。
+> **まだ CLAUDE.md / MEMORY.md を記憶として使っていますか？** この Markdown ファイル記憶方式には致命的な欠陥があります：ファイルは膨らみ続け、毎回のセッションで全量注入して大量のトークンを消費；内容はキーワード検索しかできず、「データベースタイムアウト」で検索しても「MySQL コネクションプールの落とし穴」は見つからない；複数プロジェクトで1つのファイルを共有すると相互汚染；タスク追跡がなく、開発進捗は頭の中だけ；200行での切り捨て、手動メンテナンス、重複排除や統合ができないという日常的な問題も。
 >
-> **AIVectorMemory はAIに長期記憶を与えます。** すべてのプロジェクト知識、失敗の教訓、開発の意思決定、タスク進捗が、ローカルベクトルデータベースにセッションを超えて永続保存。新セッションは自動的にコンテキストを復元、セマンティック検索で的確に呼び出し、トークン消費を50%+削減。
+> **AIVectorMemory はまったく異なるアプローチです。** ローカルベクトルデータベースに保存し、セマンティック検索で的確に呼び出し（言葉が違っても一致）、オンデマンド検索で関連する記憶だけを読み込み（トークン消費を50%+削減）、マルチプロジェクトを自動隔離して干渉ゼロ、内蔵の問題追跡 + タスク管理で AI が開発フロー全体を自動管理。すべてのデータはあなたのマシンに永久保存 — クラウド依存ゼロ、セッションや IDE を切り替えても失われません。
 
 ## ✨ 主な機能
 
@@ -32,6 +32,11 @@
 | 🔌 **全IDE対応** | Cursor / Kiro / Claude Code / Windsurf / VSCode / OpenCode / Trae — ワンクリックインストール、すぐ使える |
 | 📁 **マルチプロジェクト分離** | 1つのDBで全プロジェクト管理、自動分離で干渉なし、プロジェクト切り替えもシームレス |
 | 🔄 **スマート重複排除** | 類似度 > 0.95 で自動マージ更新、記憶ストアは常にクリーン — 使い続けても散らからない |
+
+<p align="center">
+  QQ群：1085682431 &nbsp;|&nbsp; 微信：changhuibiz<br>
+  共同参与项目开发加QQ群或微信交流
+</p>
 
 ## 🏗️ アーキテクチャ
 
@@ -123,7 +128,6 @@ uvx aivectormemory install
 | VSCode | `.vscode/mcp.json` |
 | Trae | `.trae/mcp.json` |
 | OpenCode | `opencode.json` |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
 </details>
 
@@ -216,7 +220,7 @@ run web --port 9080 --quiet          # リクエストログを非表示
 run web --port 9080 --quiet --daemon  # バックグラウンド実行（macOS/Linux）
 ```
 
-ブラウザで `http://localhost:9080` にアクセス。
+ブラウザで `http://localhost:9080` にアクセス。デフォルトユーザー名 `admin`、パスワード `admin123`（初回ログイン後に設定で変更可能）。
 
 - マルチプロジェクト切り替え、記憶の閲覧/検索/編集/削除/エクスポート/インポート
 - セマンティック検索（ベクトル類似度マッチング）
@@ -228,6 +232,12 @@ run web --port 9080 --quiet --daemon  # バックグラウンド実行（macOS/L
 - 🌐 多言語対応（简体中文 / 繁體中文 / English / Español / Deutsch / Français / 日本語）
 
 <p align="center">
+  <img src="003.png" alt="ログイン画面" width="100%">
+  <br>
+  <em>ログイン画面</em>
+</p>
+
+<p align="center">
   <img src="dashboard-projects.png" alt="プロジェクト選択" width="100%">
   <br>
   <em>プロジェクト選択</em>
@@ -237,6 +247,14 @@ run web --port 9080 --quiet --daemon  # バックグラウンド実行（macOS/L
   <img src="dashboard-overview.png" alt="統計概要 & ベクトルネットワーク可視化" width="100%">
   <br>
   <em>統計概要 & ベクトルネットワーク可視化</em>
+</p>
+
+<p align="center">
+  <img src="20260306234753_6_1635.jpg" alt="WeChatグループ" width="280">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="8_1635.jpg" alt="QQグループ：1085682431" width="280">
+  <br>
+  <em>WeChatグループに参加 &nbsp;|&nbsp; QQグループに参加</em>
 </p>
 
 ## ⚡ Steeringルールとの組み合わせ
@@ -251,7 +269,7 @@ AIVectorMemoryはストレージ層です。Steeringルールを使ってAIに**
 | Cursor | `.cursor/rules/aivectormemory.md` | `.cursor/hooks.json` |
 | Claude Code | `CLAUDE.md`（追記） | `.claude/settings.json` |
 | Windsurf | `.windsurf/rules/aivectormemory.md` | `.windsurf/hooks.json` |
-| VSCode | `.github/copilot-instructions.md`（追記） | — |
+| VSCode | `.github/copilot-instructions.md`（追記） | `.claude/settings.json` |
 | Trae | `.trae/rules/aivectormemory.md` | — |
 | OpenCode | `AGENTS.md`（追記） | `.opencode/plugins/*.js` |
 
@@ -340,6 +358,14 @@ export HF_ENDPOINT=https://hf-mirror.com
 | Web | ネイティブHTTPServer + Vanilla JS |
 
 ## 📋 更新履歴
+
+### v1.0.3
+
+**recall 検索最適化**
+- 🔍 `recall` に `tags_mode` パラメータ追加：`any`（OR マッチ）/ `all`（AND マッチ）
+- 🔍 `query + tags` 時はデフォルトで OR マッチ（いずれかのタグ一致で候補入り）、複数タグ検索の漏れを解決
+- 🔍 `tags` のみの場合は AND マッチ維持（正確なカテゴリ閲覧）、後方互換
+- 📝 Steering ルールに検索ガイドラインを追加
 
 ### v0.2.8
 

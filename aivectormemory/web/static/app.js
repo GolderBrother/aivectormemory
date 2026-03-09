@@ -1,6 +1,22 @@
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
+// Theme management
+(function initTheme() {
+  const saved = localStorage.getItem('avm-theme') || 'dark';
+  if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = $('#theme-toggle');
+    if (btn) btn.addEventListener('click', () => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      const next = isLight ? 'dark' : 'light';
+      if (next === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      else document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('avm-theme', next);
+    });
+  });
+})();
+
 let currentProject = null;
 
 const api = (path, opts = {}) => {
@@ -39,6 +55,12 @@ function switchTab(tab) {
   if (navItem) navItem.classList.add('active');
   const panel = $(`#tab-${tab}`);
   if (panel) panel.classList.add('active');
+  // Update main header title
+  const titleMap = { stats: 'stats', status: 'sessionStatus', issues: 'issueTracking', tasks: 'taskManagement', 'project-memories': 'projectMemories', 'user-memories': 'globalMemories', tags: 'tagManagement', settings: 'settings' };
+  const headerTitle = $('#main-header-title');
+  if (headerTitle) headerTitle.textContent = t(titleMap[tab] || tab);
+  const headerProj = $('#main-header-project');
+  if (headerProj && currentProject) headerProj.textContent = currentProject.replace(/\\/g, '/').split('/').pop();
   loadTab(tab);
 }
 
@@ -323,18 +345,17 @@ async function loadStats() {
   const tagList = Object.entries(tags).sort((a, b) => b[1] - a[1]);
 
   const cards = [
-    { label: t('projectMemories'), num: mem.project || 0, cls: 'blue', action: 'goto-tab', tab: 'project-memories' },
-    { label: t('globalMemories'), num: mem.user || 0, cls: 'cyan', action: 'goto-tab', tab: 'user-memories' },
-    { label: i18n.status.pending, num: issues.pending || 0, cls: 'warning', action: 'filter-issues', status: 'pending' },
-    { label: i18n.status.in_progress, num: issues.in_progress || 0, cls: 'info', action: 'filter-issues', status: 'in_progress' },
-    { label: i18n.status.completed, num: issues.completed || 0, cls: 'success', action: 'filter-issues', status: 'completed' },
-    { label: i18n.status.archived, num: issues.archived || 0, cls: 'muted', action: 'filter-issues', status: 'archived' },
+    { label: t('projectMemories'), num: mem.project || 0, cls: 'blue', action: 'goto-tab', tab: 'project-memories', sub: '' },
+    { label: t('globalMemories'), num: mem.user || 0, cls: 'cyan', action: 'goto-tab', tab: 'user-memories', sub: '' },
+    { label: i18n.status.pending, num: issues.pending || 0, cls: 'warning', action: 'filter-issues', status: 'pending', sub: `${issues.in_progress || 0} ${i18n.status.in_progress}` },
+    { label: i18n.status.completed, num: issues.completed || 0, cls: 'success', action: 'filter-issues', status: 'completed', sub: `${issues.archived || 0} ${i18n.status.archived}` },
   ];
 
   $('#stats-content').innerHTML = cards.map(c =>
     `<div class="mini-card mini-card--${c.cls}" data-action="${c.action}" data-tab="${c.tab || ''}" data-status="${c.status || ''}">
       <div class="mini-card__label">${c.label}</div>
       <div class="mini-card__number">${c.num}</div>
+      ${c.sub ? `<div class="mini-card__sub">${c.sub}</div>` : ''}
     </div>`
   ).join('');
 
@@ -1136,6 +1157,139 @@ $('#tag-search-clear')?.addEventListener('click', () => {
   loadTags();
 });
 
+
+async function loadSettings() {
+  const el = $('#settings-content');
+  if (!el) return;
+
+  // Fetch data in parallel
+  const [healthRes, statsRes, backupsRes] = await Promise.all([
+    fetch('/api/maintenance/health').then(r => r.json()).catch(() => null),
+    fetch('/api/maintenance/stats').then(r => r.json()).catch(() => null),
+    fetch('/api/maintenance/backups').then(r => r.json()).catch(() => ({ backups: [] })),
+  ]);
+
+  const h = healthRes || {};
+  const s = statsRes || {};
+  const tc = s.table_counts || {};
+  const backups = (backupsRes && backupsRes.backups) || [];
+  const username = localStorage.getItem('avm-username') || '';
+
+  el.innerHTML = `
+    <div class="settings-section">
+      <div class="section-title">${t('language')}</div>
+      <div class="settings-card">
+        <div id="settings-lang-switcher"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-title">${t('dbStats')}</div>
+      <div class="settings-stats-grid">
+        <div class="settings-stat"><div class="settings-stat__label">${t('fileSize')}</div><div class="settings-stat__value blue">${s.file_size_mb || 0} MB</div></div>
+        <div class="settings-stat"><div class="settings-stat__label">${t('projectMemories')}</div><div class="settings-stat__value blue">${tc.memories || 0}</div></div>
+        <div class="settings-stat"><div class="settings-stat__label">${t('globalMemories')}</div><div class="settings-stat__value green">${tc.user_memories || 0}</div></div>
+        <div class="settings-stat"><div class="settings-stat__label">${t('embeddingDim')}</div><div class="settings-stat__value purple">${s.embedding_dim || 0}</div></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-title">${t('healthCheck')}</div>
+      <div class="settings-card">
+        <div class="settings-health-grid">
+          <div class="settings-health-item">
+            <span class="settings-health-label">${t('projectMemories')} ${t('embeddingStatus')}</span>
+            <span class="settings-health-value ${h.memories_missing ? 'warn' : 'ok'}">${h.vec_memories_total || 0} / ${h.memories_total || 0} ${h.memories_missing ? '(' + h.memories_missing + ' missing)' : '✓'}</span>
+          </div>
+          <div class="settings-health-item">
+            <span class="settings-health-label">${t('globalMemories')} ${t('embeddingStatus')}</span>
+            <span class="settings-health-value ${h.user_memories_missing ? 'warn' : 'ok'}">${h.vec_user_memories_total || 0} / ${h.user_memories_total || 0} ${h.user_memories_missing ? '(' + h.user_memories_missing + ' missing)' : '✓'}</span>
+          </div>
+          <div class="settings-health-item">
+            <span class="settings-health-label">${t('orphanVectors')}</span>
+            <span class="settings-health-value ${(h.orphan_vec || h.orphan_user_vec) ? 'warn' : 'ok'}">${(h.orphan_vec || 0) + (h.orphan_user_vec || 0)}</span>
+          </div>
+        </div>
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+          <button class="btn btn--primary btn--sm" onclick="doRepairWeb()">${t('repairOrphans')}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-title">${t('backup')}</div>
+      <div class="settings-card">
+        <button class="btn btn--primary btn--sm" onclick="doBackupWeb()" style="margin-bottom: 12px;">${t('createBackup')}</button>
+        ${backups.length ? '<div class="settings-backup-list">' + backups.slice(0, 5).map(b =>
+          '<div class="settings-backup-item"><span>' + b.name + '</span><span class="settings-backup-size">' + b.size_mb + ' MB</span></div>'
+        ).join('') + '</div>' : '<div style="color: var(--text-muted); font-size: 13px;">' + t('noBackups') + '</div>'}
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="section-title">${t('account')}</div>
+      <div class="settings-card">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+          <div class="avatar">${username ? username.charAt(0).toUpperCase() : 'U'}</div>
+          <div><div style="font-weight: 500;">${username || 'User'}</div><div style="font-size: 12px; color: var(--text-muted);">${s.db_path || ''}</div></div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 500; margin-bottom: 8px;">${t('changePassword')}</div>
+          <div style="display: flex; flex-direction: column; gap: 8px; max-width: 320px;">
+            <input type="password" id="current-password" placeholder="${t('currentPassword')}" class="input" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary);">
+            <input type="password" id="new-password" placeholder="${t('newPassword')}" class="input" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary);">
+            <input type="password" id="confirm-new-password" placeholder="${t('confirmNewPassword')}" class="input" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary);">
+            <button class="btn btn--primary btn--sm" onclick="doChangePassword()" style="align-self: flex-start;">${t('changePassword')}</button>
+          </div>
+        </div>
+        <button class="btn btn--ghost-danger btn--sm" onclick="doLogoutWeb()">${t('auth.logout')}</button>
+      </div>
+    </div>
+  `;
+
+  renderLangSwitcher('settings-lang-switcher');
+}
+
+async function doRepairWeb() {
+  const res = await fetch('/api/maintenance/repair', { method: 'POST' }).then(r => r.json());
+  if (res.error) return toast(res.error, 'error');
+  toast(t('repairSuccess') || 'Repair completed: ' + (res.orphans_deleted || 0) + ' orphans deleted', 'success');
+  loadSettings();
+}
+
+async function doBackupWeb() {
+  const res = await fetch('/api/maintenance/backup', { method: 'POST' }).then(r => r.json());
+  if (res.error) return toast(res.error, 'error');
+  toast(t('backupSuccess') || 'Backup created: ' + res.name, 'success');
+  loadSettings();
+}
+
+function doLogoutWeb() {
+  authToken = '';
+  localStorage.removeItem('avm-token');
+  localStorage.removeItem('avm-username');
+  location.reload();
+}
+
+async function doChangePassword() {
+  const cur = $('#current-password').value;
+  const np = $('#new-password').value;
+  const cnp = $('#confirm-new-password').value;
+  if (!cur || !np) return toast(t('auth.fieldsRequired'), 'error');
+  if (np.length < 6) return toast(t('auth.passwordTooShort'), 'error');
+  if (np !== cnp) return toast(t('auth.passwordMismatch'), 'error');
+  const res = await fetch('/api/auth/change-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: authToken, current_password: cur, new_password: np })
+  }).then(r => r.json());
+  if (res.error) return toast(t('passwordChangeFailed') + ': ' + res.error, 'error');
+  toast(t('passwordChanged'), 'success');
+  $('#current-password').value = '';
+  $('#new-password').value = '';
+  $('#confirm-new-password').value = '';
+}
+
 function loadTab(tab) {
   ({
     stats: loadStats,
@@ -1145,6 +1299,7 @@ function loadTab(tab) {
     issues: loadIssues,
     tags: loadTags,
     tasks: loadTasks,
+    settings: loadSettings,
   })[tab]?.();
 }
 
@@ -1206,6 +1361,7 @@ function enterProject(projectDir) {
   $$('.tab-panel').forEach(el => el.classList.remove('active'));
   $('#tab-stats').classList.add('active');
   renderLangSwitcher('lang-switcher-sidebar');
+  updateSidebarUser(localStorage.getItem('avm-username') || '');
   loadStats();
 }
 
@@ -1215,6 +1371,7 @@ function exitProject() {
   $('#app').style.display = 'none';
   $('#project-select').style.display = '';
   $('#sidebar-project-info').style.display = 'none';
+  updateProjectSelectUser(localStorage.getItem('avm-username') || '');
   loadProjects();
 }
 
@@ -1300,9 +1457,134 @@ $('#import-file')?.addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
+// ============== Auth ==============
+
+let authToken = localStorage.getItem('avm-token') || '';
+let authMode = 'login'; // 'login' | 'register'
+
+function showAuthPage() {
+  $('#auth-page').style.display = '';
+  $('#project-select').style.display = 'none';
+  $('#app').style.display = 'none';
+  renderAuthForm();
+}
+
+function hideAuthPage() {
+  $('#auth-page').style.display = 'none';
+}
+
+function renderAuthForm() {
+  const isLogin = authMode === 'login';
+  $('#auth-title').textContent = t(isLogin ? 'auth.login' : 'auth.createAccount');
+  $('#auth-desc').textContent = t(isLogin ? 'auth.loginDesc' : 'auth.createAccountDesc');
+  $('#auth-submit').textContent = t(isLogin ? 'auth.login' : 'auth.createAccount');
+  $('#auth-confirm-group').style.display = isLogin ? 'none' : '';
+  $('#auth-error').style.display = 'none';
+  $('#auth-username').value = '';
+  $('#auth-password').value = '';
+  $('#auth-confirm-password').value = '';
+  $('#auth-switch').innerHTML = isLogin
+    ? `${t('auth.noAccount')} <button class="btn-link" onclick="switchAuthMode('register')">${t('auth.register')}</button>`
+    : `${t('auth.hasAccount')} <button class="btn-link" onclick="switchAuthMode('login')">${t('auth.login')}</button>`;
+}
+
+window.switchAuthMode = function(mode) {
+  authMode = mode;
+  renderAuthForm();
+};
+
+$('#auth-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const username = $('#auth-username').value.trim();
+  const password = $('#auth-password').value;
+  const errEl = $('#auth-error');
+
+  if (!username || !password) {
+    errEl.textContent = t('auth.fieldsRequired');
+    errEl.style.display = '';
+    return;
+  }
+
+  if (authMode === 'register') {
+    if (password.length < 6) {
+      errEl.textContent = t('auth.passwordTooShort');
+      errEl.style.display = '';
+      return;
+    }
+    if (password !== $('#auth-confirm-password').value) {
+      errEl.textContent = t('auth.passwordMismatch');
+      errEl.style.display = '';
+      return;
+    }
+    const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }).then(r => r.json());
+    if (res.error) {
+      errEl.textContent = res.error;
+      errEl.style.display = '';
+      return;
+    }
+  }
+
+  const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }).then(r => r.json());
+  if (res.error) {
+    errEl.textContent = res.error;
+    errEl.style.display = '';
+    return;
+  }
+
+  authToken = res.token;
+  localStorage.setItem('avm-token', authToken);
+  localStorage.setItem('avm-username', username);
+  updateSidebarUser(username);
+  updateProjectSelectUser(username);
+  hideAuthPage();
+  const hp = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
+  hp ? enterProject(hp) : (($('#project-select').style.display = ''), loadProjects());
+});
+
+
+function updateSidebarUser(username) {
+  const nameEl = $('#sidebar-user-name');
+  const avatarEl = $('#sidebar-avatar');
+  const projEl = $('#sidebar-user-project');
+  if (nameEl && username) {
+    nameEl.textContent = username;
+    avatarEl.textContent = username.charAt(0).toUpperCase();
+  }
+  if (projEl && currentProject) {
+    projEl.textContent = currentProject.replace(/\\/g, '/').split('/').pop();
+  }
+}
+
+function updateProjectSelectUser(username) {
+  const el = $('#project-select-user');
+  if (!el || !username) return;
+  el.innerHTML = `<div class="avatar">${username.charAt(0).toUpperCase()}</div><span>${username}</span><button class="btn btn--ghost-danger" onclick="doLogoutWeb()">${t('auth.logout')}</button>`;
+}
+
+async function checkAuth() {
+  if (!authToken) return showAuthPage();
+  try {
+    const res = await fetch(`/api/auth/me?token=${encodeURIComponent(authToken)}`).then(r => r.json());
+    if (res.error) {
+      authToken = '';
+      localStorage.removeItem('avm-token');
+      return showAuthPage();
+    }
+    if (res.username) localStorage.setItem('avm-username', res.username);
+    const uname = res.username || localStorage.getItem('avm-username') || '';
+    updateSidebarUser(uname);
+    updateProjectSelectUser(uname);
+    hideAuthPage();
+    const hp = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
+    hp ? enterProject(hp) : (($('#project-select').style.display = ''), loadProjects());
+  } catch {
+    showAuthPage();
+  }
+}
+
 // 初始化
+initLangFromServer();
 setLang(currentLang);
 renderLangSwitcher('lang-switcher-project');
 
-const _hashProject = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
-_hashProject ? enterProject(_hashProject) : loadProjects();
+checkAuth();

@@ -7,7 +7,43 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<div id="project-select" class="project-select">
+<div id="auth-page" class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 28 28" fill="none">
+        <line class="edge" x1="14" y1="6" x2="6" y2="16"/><line class="edge" x1="14" y1="6" x2="22" y2="16"/>
+        <line class="edge" x1="6" y1="16" x2="22" y2="16"/><line class="edge" x1="14" y1="6" x2="14" y2="24"/>
+        <circle class="node" cx="14" cy="6" r="3.5"/><circle class="node" cx="6" cy="16" r="3"/>
+        <circle class="node" cx="22" cy="16" r="3"/><circle class="node" cx="14" cy="24" r="2.5"/>
+      </svg>
+      <span>AIVectorMemory</span>
+    </div>
+    <div id="auth-title" class="auth-title"></div>
+    <div id="auth-desc" class="auth-desc"></div>
+    <div id="auth-error" class="auth-error" style="display:none"></div>
+    <form id="auth-form" autocomplete="on">
+      <div class="form-group">
+        <label class="form-label" data-i18n="auth.username">用户名</label>
+        <input id="auth-username" class="form-input" type="text" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="auth.password">密码</label>
+        <input id="auth-password" class="form-input" type="password" autocomplete="current-password">
+      </div>
+      <div id="auth-confirm-group" class="form-group" style="display:none">
+        <label class="form-label" data-i18n="auth.confirmPassword">确认密码</label>
+        <input id="auth-confirm-password" class="form-input" type="password" autocomplete="new-password">
+      </div>
+      <button id="auth-submit" class="btn btn--primary btn--full" type="submit"></button>
+    </form>
+    <div id="auth-switch" class="auth-switch"></div>
+  </div>
+</div>
+<div id="project-select" class="project-select" style="display:none">
+  <div class="project-select__toolbar">
+    <div id="lang-switcher-project" class="lang-switcher"></div>
+    <div class="project-select__user" id="project-select-user"></div>
+  </div>
   <div class="project-select__header">
     <div class="project-select__logo">
       <svg viewBox="0 0 28 28" fill="none">
@@ -26,7 +62,6 @@
     </div>
     <div class="project-select__title" data-i18n="selectProject">选择项目</div>
   </div>
-  <div id="lang-switcher-project" class="lang-switcher lang-switcher--topright"></div>
   <div id="project-grid" class="project-grid"></div>
   <div id="project-select-footer" class="project-select__footer"></div>
 </div>
@@ -52,6 +87,7 @@
       <span class="sidebar-project-info__name" id="sidebar-project-name"></span>
     </div>
     <ul class="nav-list">
+      <li class="nav-section-label" data-i18n="sectionMemory">记忆</li>
       <li class="nav-item active" data-tab="stats">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         <span data-i18n="stats">统计概览</span>
@@ -76,11 +112,30 @@
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span data-i18n="globalMemories">全局记忆</span>
       </li>
+      <li class="nav-section-label" data-i18n="sectionSystem">系统</li>
       <li class="nav-item" data-tab="tags">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
         <span data-i18n="tagManagement">标签管理</span>
       </li>
+      <li class="nav-item" data-tab="settings">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 5 14.82a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.68 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09"/></svg>
+        <span data-i18n="settings">设置</span>
+      </li>
     </ul>
+    <div class="sidebar-bottom">
+      <div id="theme-toggle" class="theme-toggle" title="Toggle theme">
+        <svg class="theme-toggle__icon theme-toggle__icon--dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span data-i18n="toggleTheme">切换主题</span>
+      </div>
+      <div class="sidebar-user" id="sidebar-user">
+        <div class="avatar" id="sidebar-avatar"></div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebar-user-name"></div>
+          <div class="sidebar-user-email" id="sidebar-user-project"></div>
+        </div>
+      </div>
+    </div>
     <div class="sidebar-decor">
       <svg viewBox="0 0 192 60" fill="none">
         <line class="edge-flow" x1="20" y1="30" x2="60" y2="15" stroke="#6366F1" stroke-width="1"/>
@@ -97,8 +152,17 @@
       </svg>
     </div>
   </nav>
-  <main class="content">
-    <div id="lang-switcher-sidebar" class="lang-switcher lang-switcher--topright"></div>
+  <div class="main">
+    <header class="main-header">
+      <div class="main-header-left">
+        <span id="main-header-title" class="main-header-title"></span>
+        <span id="main-header-project" class="main-header-project"></span>
+      </div>
+      <div class="main-header-actions">
+        <div id="lang-switcher-sidebar" class="lang-switcher"></div>
+      </div>
+    </header>
+    <main class="main-content">
     <section id="tab-stats" class="tab-panel active">
       <div class="page-header"><h2 class="page-title" data-i18n="stats">统计概览</h2></div>
       <div id="block-alert-container"></div>
@@ -232,7 +296,12 @@
       </div>
       <div id="task-list" class="task-groups"></div>
     </section>
-  </main>
+    <section id="tab-settings" class="tab-panel">
+      <div class="page-header"><h2 class="page-title" data-i18n="settings">设置</h2></div>
+      <div id="settings-content"></div>
+    </section>
+    </main>
+  </div>
 </div>
 <div id="modal" class="modal hidden">
   <div class="modal-overlay"></div>

@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 dist/
-build/
+/build/
 *.egg
 
 # Virtual environment
@@ -30,11 +30,19 @@ opencode.json
 .DS_Store
 Thumbs.db
 
-# Test
+# Test cache
 .pytest_cache/
 htmlcov/
 .coverage
-tests/
 
 # Screenshots (Playwright)
 tests/screenshots/
+
+# Root screenshots & Playwright MCP
+/*.png
+.playwright-mcp/
+
+# Local-only directories (specs, tests, design docs)
+docs/design/
+docs/specs/
+tests/

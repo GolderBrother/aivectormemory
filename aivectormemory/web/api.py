@@ -3,7 +3,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 from aivectormemory.db.state_repo import StateRepo
 from aivectormemory.db.issue_repo import IssueRepo
-from aivectormemory.web.routes import memories, issues, tasks, tags, projects
+from aivectormemory.web.routes import memories, issues, tasks, tags, projects, auth, maintenance
 
 
 def _resolve_project(cm, params):
@@ -18,6 +18,18 @@ def handle_api_request(handler, cm):
     params = parse_qs(parsed.query)
     pdir = _resolve_project(cm, params)
     method = handler.command
+
+    # --- Auth 路由（无需认证） ---
+    auth_routes = {
+        "/api/auth/register": lambda: auth.register(handler, cm, _read_body),
+        "/api/auth/login": lambda: auth.login(handler, cm, _read_body),
+        "/api/auth/logout": lambda: auth.logout(handler, _read_body),
+        "/api/auth/change-password": lambda: auth.change_password(handler, cm, _read_body),
+    }
+    if method == "POST" and path in auth_routes:
+        return _json_response(handler, auth_routes[path]())
+    if method == "GET" and path == "/api/auth/me":
+        return _json_response(handler, auth.get_current_user(params))
 
     # --- 资源 ID 路由 ---
     if path.startswith("/api/memories/") and len(path.split("/")) == 4:
@@ -75,6 +87,10 @@ def handle_api_request(handler, cm):
             "/api/projects": lambda: projects.get_projects(cm),
             "/api/export": lambda: memories.export_memories(cm, params, pdir),
             "/api/browse": lambda: projects.browse_directory(params),
+            "/api/maintenance/health": lambda: maintenance.health_check(cm),
+            "/api/maintenance/stats": lambda: maintenance.db_stats(cm),
+            "/api/maintenance/backups": lambda: maintenance.list_backups(cm),
+            "/api/settings/language": lambda: _get_language(),
         },
         "POST": {
             "/api/import": lambda: memories.import_memories(handler, cm, pdir),
@@ -82,6 +98,9 @@ def handle_api_request(handler, cm):
             "/api/projects": lambda: projects.add_project(handler, cm),
             "/api/issues": lambda: issues.post_issue(handler, cm, pdir),
             "/api/tasks": lambda: tasks.post_tasks(handler, cm, pdir),
+            "/api/settings/language": lambda: _set_language(handler),
+            "/api/maintenance/repair": lambda: maintenance.repair_missing(cm),
+            "/api/maintenance/backup": lambda: maintenance.backup_db(cm),
         },
         "PUT": {
             "/api/status": lambda: _put_status(handler, cm, pdir),
@@ -139,3 +158,23 @@ def _put_status(handler, cm, pdir):
     body = _read_body(handler)
     repo = StateRepo(cm.conn, pdir)
     return repo.upsert(**body)
+
+# --- Language Settings ---
+
+def _get_language():
+    from aivectormemory.settings import get_language
+    return {"language": get_language()}
+
+
+def _set_language(handler):
+    body = _read_body(handler)
+    lang = body.get("language", "")
+    if not lang:
+        return {"error": "language is required"}
+    from aivectormemory.settings import set_language, SUPPORTED_LANGS
+    if lang not in SUPPORTED_LANGS:
+        return {"error": f"Unsupported language: {lang}. Supported: {', '.join(SUPPORTED_LANGS)}"}
+    set_language(lang)
+    from aivectormemory.regenerate import run_regenerate
+    run_regenerate(lang)
+    return {"success": True, "language": lang}

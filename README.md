@@ -1,39 +1,68 @@
-🌐 简体中文 | [繁體中文](docs/README.zh-TW.md) | [English](docs/README.en.md) | [Español](docs/README.es.md) | [Deutsch](docs/README.de.md) | [Français](docs/README.fr.md) | [日本語](docs/README.ja.md)
+🌐 [简体中文](docs/README.zh-CN.md) | [繁體中文](docs/README.zh-TW.md) | English | [Español](docs/README.es.md) | [Deutsch](docs/README.de.md) | [Français](docs/README.fr.md) | [日本語](docs/README.ja.md)
 
 <p align="center">
-  <h1 align="center">🧠 AIVectorMemory</h1>
-  <p align="center">
-    <strong>给 AI 编程助手装上记忆 — 跨会话持久化记忆 MCP Server</strong>
-  </p>
-  <p align="center">
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
-    <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
-    <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
-    <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
-  </p>
+  <img src="docs/logo.png" alt="AIVectorMemory Logo" width="200">
+</p>
+
+<p align="center">
+  <img src="docs/image.png" alt="AI Vector Memory Architecture" width="100%">
+</p>
+<h1 align="center">AIVectorMemory</h1>
+<p align="center">
+  <strong>Give your AI coding assistant a memory — Cross-session persistent memory MCP Server</strong>
+</p>
+<p align="center">
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/v/aivectormemory?color=blue&label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/aivectormemory/"><img src="https://img.shields.io/pypi/pyversions/aivectormemory" alt="Python"></a>
+  <a href="https://github.com/Edlineas/aivectormemory/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-green" alt="License"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP"></a>
 </p>
 
 ---
 
-> **你是否也有这样的困扰？** 每开一个新会话，AI 就像换了个人 — 昨天刚教会它的项目规范今天又忘了，踩过的坑还会再踩一遍，开发到一半的进度全部归零。你只能一遍遍复制粘贴项目背景，眼睁睁看着 Token 被重复消耗。
+> **Still using CLAUDE.md / MEMORY.md as memory?** This Markdown-file memory approach has fatal flaws: the file keeps growing, injecting everything into every session and burning massive tokens; content only supports keyword matching — search "database timeout" and you won't find "MySQL connection pool pitfall"; sharing one file across projects causes cross-contamination; there's no task tracking, so dev progress lives entirely in your head; not to mention the 200-line truncation, manual maintenance, and inability to deduplicate or merge.
 >
-> **AIVectorMemory 让 AI 拥有长期记忆。** 所有项目知识、踩坑经验、开发决策、任务进度，跨会话永久保存在本地向量数据库中。新会话自动恢复上下文，语义搜索精准召回，Token 消耗直降 50%+。
+> **AIVectorMemory is a fundamentally different approach.** Local vector database storage with semantic search for precise recall (matches even when wording differs), on-demand retrieval that loads only relevant memories (token usage drops 50%+), automatic multi-project isolation with zero interference, and built-in issue tracking + task management that lets AI fully automate your dev workflow. All data is permanently stored on your machine — zero cloud dependency, never lost when switching sessions or IDEs.
 
-## ✨ 核心特性
+## ✨ Core Features
 
-| 特性 | 说明 |
-|------|------|
-| 🧠 **跨会话记忆** | AI 终于能记住你的项目了 — 踩过的坑、做过的决策、定下的规范，换个会话照样记得 |
-| 🔍 **语义搜索** | 不用记原文怎么写的，搜"数据库超时"就能找到"MySQL 连接池踩坑" |
-| 💰 **省 50%+ Token** | 不再每次对话都复制粘贴项目背景，语义检索按需召回，告别全量上下文注入 |
-| 🔗 **任务驱动开发** | 问题追踪 → 任务拆分 → 状态同步 → 联动归档，AI 自动管理完整开发流程 |
-| 📊 **Web 看板** | 可视化管理所有记忆和任务，3D 向量网络一眼看清知识关联 |
-| 🏠 **完全本地** | 零依赖云服务，ONNX 本地推理，无需 API Key，数据不出你的电脑 |
-| 🔌 **全 IDE 通吃** | Cursor / Kiro / Claude Code / Windsurf / VSCode / OpenCode / Trae — 一键安装，开箱即用 |
-| 📁 **多项目隔离** | 一个 DB 管所有项目，自动隔离互不干扰，切换项目无感知 |
-| 🔄 **智能去重** | 相似度 > 0.95 自动合并更新，记忆库永远干净，不会越用越乱 |
+| Feature | Description |
+|---------|-------------|
+| 🧠 **Cross-Session Memory** | Your AI finally remembers your project — pitfalls, decisions, conventions all persist across sessions |
+| 🔍 **Semantic Search** | No need to recall exact wording — search "database timeout" and find "MySQL connection pool issue" |
+| 💰 **Save 50%+ Tokens** | Stop copy-pasting project context every conversation. Semantic retrieval on demand, no more bulk injection |
+| 🔗 **Task-Driven Dev** | Issue tracking → task breakdown → status sync → linked archival. AI manages the full dev workflow |
+| 📊 **Desktop App + Web Dashboard** | Native desktop app (macOS/Windows/Linux) + Web dashboard, visual management for memories and tasks, 3D vector network reveals knowledge connections at a glance |
+| 🏠 **Fully Local** | Zero cloud dependency. ONNX local inference, no API Key, data never leaves your machine |
+| 🔌 **All IDEs** | Cursor / Kiro / Claude Code / Windsurf / VSCode / OpenCode / Trae — one-click install, works out of the box |
+| 📁 **Multi-Project Isolation** | One DB for all projects, auto-isolated with zero interference, seamless project switching |
+| 🔄 **Smart Dedup** | Similarity > 0.95 auto-merges updates, keeping your memory store clean — never gets messy over time |
+| 🌐 **7 Languages** | 简体中文 / 繁體中文 / English / Español / Deutsch / Français / 日本語, full-stack i18n for dashboard + Steering rules |
 
-## 🏗️ 架构
+<p align="center">
+  QQ群：1085682431 &nbsp;|&nbsp; 微信：changhuibiz<br>
+  共同参与项目开发加QQ群或微信交流
+</p>
+
+<p align="center">
+  <img src="docs/003.png" alt="Login" width="100%">
+  <br>
+  <em>Login</em>
+</p>
+
+<p align="center">
+  <img src="docs/001.png" alt="Project Selection" width="100%">
+  <br>
+  <em>Project Selection</em>
+</p>
+
+<p align="center">
+  <img src="docs/002.png" alt="Overview & Vector Network" width="100%">
+  <br>
+  <em>Overview & Vector Network</em>
+</p>
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -42,7 +71,7 @@
 └──────────────────────┬──────────────────────────┘
                        │ MCP Protocol (stdio)
 ┌──────────────────────▼──────────────────────────┐
-│              AIVectorMemory Server                    │
+│              AIVectorMemory Server               │
 │                                                  │
 │  ┌──────────┐ ┌──────────┐ ┌──────────────────┐ │
 │  │ remember │ │  recall   │ │   auto_save      │ │
@@ -55,51 +84,50 @@
 │  └────────────────────┬───────────────────────┘  │
 │                       │                          │
 │  ┌────────────────────▼───────────────────────┐  │
-│  │     SQLite + sqlite-vec (向量索引)          │  │
-│  │     ~/.aivectormemory/memory.db                 │  │
+│  │     SQLite + sqlite-vec (Vector Index)     │  │
+│  │     ~/.aivectormemory/memory.db            │  │
 │  └────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────┘
 ```
 
+## 🚀 Quick Start
 
-## 🚀 快速开始
-
-### 方式一：pip 安装（推荐）
+### Option 1: pip install (Recommended)
 
 ```bash
-# 安装
+# Install
 pip install aivectormemory
 
-# 升级到最新版
+# Upgrade to latest version
 pip install --upgrade aivectormemory
 
-# 进入你的项目目录，一键配置 IDE
+# Navigate to your project directory, one-click IDE setup
 cd /path/to/your/project
 run install
 ```
 
-`run install` 会交互式引导你选择 IDE，自动生成 MCP 配置、Steering 规则和 Hooks，无需手动编写。
+`run install` interactively guides you to select your IDE, auto-generating MCP config, Steering rules, and Hooks — no manual setup needed.
 
-> **macOS 用户注意**：
-> - 遇到 `externally-managed-environment` 错误，加 `--break-system-packages`
-> - 遇到 `enable_load_extension` 错误，说明当前 Python 不支持 SQLite 扩展加载（macOS 自带 Python 和 python.org 官方安装包均不支持），请改用 Homebrew Python：
+> **macOS users note**:
+> - If you get `externally-managed-environment` error, add `--break-system-packages`
+> - If you get `enable_load_extension` error, your Python doesn't support SQLite extension loading (macOS built-in Python and python.org installers don't support it). Use Homebrew Python instead:
 >   ```bash
 >   brew install python
 >   /opt/homebrew/bin/python3 -m pip install aivectormemory
 >   ```
 
-### 方式二：uvx 运行（零安装）
+### Option 2: uvx (zero install)
 
-无需 `pip install`，直接运行：
+No `pip install` needed, run directly:
 
 ```bash
 cd /path/to/your/project
 uvx aivectormemory install
 ```
 
-> 需要先安装 [uv](https://docs.astral.sh/uv/getting-started/installation/)，`uvx` 会自动下载并运行，无需手动安装包。
+> Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) to be installed. `uvx` auto-downloads and runs the package — no manual installation needed.
 
-### 方式三：手动配置
+### Option 3: Manual configuration
 
 ```json
 {
@@ -113,9 +141,9 @@ uvx aivectormemory install
 ```
 
 <details>
-<summary>📍 各 IDE 配置文件位置</summary>
+<summary>📍 IDE Configuration File Locations</summary>
 
-| IDE | 配置文件路径 |
+| IDE | Config Path |
 |-----|------------|
 | Kiro | `.kiro/settings/mcp.json` |
 | Cursor | `.cursor/mcp.json` |
@@ -124,204 +152,199 @@ uvx aivectormemory install
 | VSCode | `.vscode/mcp.json` |
 | Trae | `.trae/mcp.json` |
 | OpenCode | `opencode.json` |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 
 </details>
 
-## 🛠️ 8 个 MCP 工具
+## 🛠️ 8 MCP Tools
 
-### `remember` — 存入记忆
-
-```
-content (string, 必填)   记忆内容，Markdown 格式
-tags    (string[], 必填)  标签，如 ["踩坑", "python"]
-scope   (string)          "project"（默认）/ "user"（跨项目）
-```
-
-相似度 > 0.95 自动更新已有记忆，不重复存储。
-
-### `recall` — 语义搜索
+### `remember` — Store a memory
 
 ```
-query   (string)     语义搜索关键词
-tags    (string[])   标签精确过滤
+content (string, required)   Memory content in Markdown format
+tags    (string[], required)  Tags, e.g. ["pitfall", "python"]
+scope   (string)              "project" (default) / "user" (cross-project)
+```
+
+Similarity > 0.95 auto-updates existing memory, no duplicates.
+
+### `recall` — Semantic search
+
+```
+query   (string)     Semantic search keywords
+tags    (string[])   Exact tag filter
 scope   (string)     "project" / "user" / "all"
-top_k   (integer)    返回数量，默认 5
+top_k   (integer)    Number of results, default 5
 ```
 
-向量相似度匹配，用词不同也能找到相关记忆。
+Vector similarity matching — finds related memories even with different wording.
 
-### `forget` — 删除记忆
-
-```
-memory_id  (string)     单个 ID
-memory_ids (string[])   批量 ID
-```
-
-### `status` — 会话状态
+### `forget` — Delete memories
 
 ```
-state (object, 可选)   不传=读取，传=更新
+memory_id  (string)     Single ID
+memory_ids (string[])   Batch IDs
+```
+
+### `status` — Session state
+
+```
+state (object, optional)   Omit to read, pass to update
   is_blocked, block_reason, current_task,
   next_step, progress[], recent_changes[], pending[]
 ```
 
-跨会话保持工作进度，新会话自动恢复上下文。
+Maintains work progress across sessions, auto-restores context in new sessions.
 
-### `track` — 问题跟踪
+### `track` — Issue tracking
 
 ```
 action   (string)   "create" / "update" / "archive" / "list"
-title    (string)   问题标题
-issue_id (integer)  问题 ID
+title    (string)   Issue title
+issue_id (integer)  Issue ID
 status   (string)   "pending" / "in_progress" / "completed"
-content  (string)   排查内容
+content  (string)   Investigation content
 ```
 
-### `task` — 任务管理
+### `task` — Task management
 
 ```
-action     (string, 必填)  "batch_create" / "update" / "list" / "delete" / "archive"
-feature_id (string)        关联功能标识（list 时必填）
-tasks      (array)         任务列表（batch_create，支持子任务）
-task_id    (integer)       任务 ID（update）
-status     (string)        "pending" / "in_progress" / "completed" / "skipped"
+action     (string, required)  "batch_create" / "update" / "list" / "delete" / "archive"
+feature_id (string)            Linked feature identifier (required for list)
+tasks      (array)             Task list (batch_create, supports subtasks)
+task_id    (integer)           Task ID (update)
+status     (string)            "pending" / "in_progress" / "completed" / "skipped"
 ```
 
-通过 feature_id 关联 spec 文档，update 自动同步 tasks.md checkbox 并联动问题状态。
+Links to spec docs via feature_id. Update auto-syncs tasks.md checkboxes and linked issue status.
 
-### `readme` — README 生成
-
-```
-action   (string)    "generate"（默认）/ "diff"（差异对比）
-lang     (string)    语言：en / zh-TW / ja / de / fr / es
-sections (string[])  指定章节：header / tools / deps
-```
-
-从 TOOL_DEFINITIONS / pyproject.toml 自动生成 README 内容，支持多语言。
-
-### `auto_save` — 自动保存偏好
+### `readme` — README generation
 
 ```
-preferences  (string[])  用户表达的技术偏好（固定 scope=user，跨项目通用）
-extra_tags   (string[])  额外标签
+action   (string)    "generate" (default) / "diff" (compare differences)
+lang     (string)    Language: en / zh-TW / ja / de / fr / es
+sections (string[])  Specify sections: header / tools / deps
 ```
 
-每次对话结束自动提取并存储用户偏好，智能去重。
+Auto-generates README content from TOOL_DEFINITIONS / pyproject.toml, multi-language support.
 
-## 📊 Web 看板
+### `auto_save` — Auto save preferences
+
+```
+preferences  (string[])  User-expressed technical preferences (fixed scope=user, cross-project)
+extra_tags   (string[])  Additional tags
+```
+
+Auto-extracts and stores user preferences at end of each conversation, smart dedup.
+
+## 📊 Web Dashboard
 
 ```bash
 run web --port 9080
-run web --port 9080 --quiet          # 屏蔽请求日志
-run web --port 9080 --quiet --daemon  # 后台运行（macOS/Linux）
+run web --port 9080 --quiet          # Suppress request logs
+run web --port 9080 --quiet --daemon  # Run in background (macOS/Linux)
 ```
 
-浏览器访问 `http://localhost:9080`
+Visit `http://localhost:9080` in your browser. Default username `admin`, password `admin123` (can be changed in settings after first login).
 
-- 多项目切换，记忆浏览/搜索/编辑/删除/导出/导入
-- 语义搜索（向量相似度匹配）
-- 项目数据一键删除
-- 会话状态、问题追踪
-- 标签管理（重命名、合并、批量删除）
-- Token 认证保护
-- 3D 向量记忆网络可视化
-- 🌐 多语言支持（简体中文 / 繁體中文 / English / Español / Deutsch / Français / 日本語）
-
-<p align="center">
-  <img src="docs/dashboard-projects.png" alt="项目选择" width="100%">
-  <br>
-  <em>项目选择</em>
-</p>
+- Multi-project switching, memory browse/search/edit/delete/export/import
+- Semantic search (vector similarity matching)
+- One-click project data deletion
+- Session status, issue tracking
+- Tag management (rename, merge, batch delete)
+- Token authentication protection
+- 3D vector memory network visualization
+- 🌐 Multi-language support (简体中文 / 繁體中文 / English / Español / Deutsch / Français / 日本語)
 
 <p align="center">
-  <img src="docs/dashboard-overview.png" alt="统计概览 & 向量网络可视化" width="100%">
+  <img src="docs/20260306234753_6_1635.jpg" alt="WeChat Group" width="280">
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/8_1635.jpg" alt="QQ Group: 1085682431" width="280">
   <br>
-  <em>统计概览 & 向量网络可视化</em>
+  <em>Scan to join WeChat group &nbsp;|&nbsp; Scan to join QQ group</em>
 </p>
 
-## ⚡ 配合 Steering 规则
+## ⚡ Pairing with Steering Rules
 
-AIVectorMemory 是存储层，通过 Steering 规则告诉 AI **何时、如何**调用这些工具。
+AIVectorMemory is the storage layer. Use Steering rules to tell AI **when and how** to call these tools.
 
-运行 `run install` 会自动生成 Steering 规则和 Hooks 配置，无需手动编写。
+Running `run install` auto-generates Steering rules and Hooks config — no manual setup needed.
 
-| IDE | Steering 位置 | Hooks |
-|-----|--------------|-------|
+| IDE | Steering Location | Hooks |
+|-----|------------------|-------|
 | Kiro | `.kiro/steering/aivectormemory.md` | `.kiro/hooks/*.hook` |
 | Cursor | `.cursor/rules/aivectormemory.md` | `.cursor/hooks.json` |
-| Claude Code | `CLAUDE.md`（追加） | `.claude/settings.json` |
+| Claude Code | `CLAUDE.md` (appended) | `.claude/settings.json` |
 | Windsurf | `.windsurf/rules/aivectormemory.md` | `.windsurf/hooks.json` |
-| VSCode | `.github/copilot-instructions.md`（追加） | — |
+| VSCode | `.github/copilot-instructions.md` (appended) | `.claude/settings.json` |
 | Trae | `.trae/rules/aivectormemory.md` | — |
-| OpenCode | `AGENTS.md`（追加） | `.opencode/plugins/*.js` |
+| OpenCode | `AGENTS.md` (appended) | `.opencode/plugins/*.js` |
 
 <details>
-<summary>📋 Steering 规则范例（自动生成）</summary>
+<summary>📋 Steering Rules Example (auto-generated)</summary>
 
 ```markdown
-# AIVectorMemory - 工作规则
+# AIVectorMemory - Workflow Rules
 
-## 1. 新会话启动（必须按顺序执行）
+## 1. New Session Startup (execute in order)
 
-1. `recall`（tags: ["项目知识"], scope: "project", top_k: 100）加载项目知识
-2. `recall`（tags: ["preference"], scope: "user", top_k: 20）加载用户偏好
-3. `status`（不传 state）读取会话状态
-4. 有阻塞 → 汇报并等待；无阻塞 → 进入处理流程
+1. `recall` (tags: ["project-knowledge"], scope: "project", top_k: 100) load project knowledge
+2. `recall` (tags: ["preference"], scope: "user", top_k: 20) load user preferences
+3. `status` (no state param) read session state
+4. Blocked → report and wait; Not blocked → enter processing flow
 
-## 2. 收到消息后的处理流程
+## 2. Message Processing Flow
 
-- 步骤 A：`status` 读取状态，有阻塞则等待
-- 步骤 B：判断消息类型（闲聊/纠正/偏好/代码问题）
-- 步骤 C：`track create` 记录问题
-- 步骤 D：排查（`recall` 查踩坑 + 查看代码 + 找根因）
-- 步骤 E：向用户说明方案，设阻塞等确认
-- 步骤 F：修改代码（修改前 `recall` 查踩坑）
-- 步骤 G：运行测试验证
-- 步骤 H：设阻塞等待用户验证
-- 步骤 I：用户确认 → `track archive` + 清阻塞
+- Step A: `status` read state, wait if blocked
+- Step B: Classify message type (chat/correction/preference/code issue)
+- Step C: `track create` record issue
+- Step D: Investigate (`recall` pitfalls + read code + find root cause)
+- Step E: Present plan to user, set blocked awaiting confirmation
+- Step F: Modify code (`recall` pitfalls before changes)
+- Step G: Run tests to verify
+- Step H: Set blocked awaiting user verification
+- Step I: User confirms → `track archive` + clear block
 
-## 3. 阻塞规则
+## 3. Blocking Rules
 
-提方案等确认、修复完等验证时必须 `status({ is_blocked: true })`。
-用户明确确认后才能清除阻塞，禁止自行清除。
+Must `status({ is_blocked: true })` when proposing plans or awaiting verification.
+Only clear after explicit user confirmation. Never self-clear.
 
-## 4-9. 问题追踪 / 代码检查 / Spec 任务管理 / 记忆质量 / 工具速查 / 开发规范
+## 4-9. Issue Tracking / Code Checks / Spec Task Mgmt / Memory Quality / Tool Reference / Dev Standards
 
-（完整规则由 `run install` 自动生成）
+(Full rules auto-generated by `run install`)
 ```
 
 </details>
 
 <details>
-<summary>🔗 Hooks 配置范例（Kiro 专属，自动生成）</summary>
+<summary>🔗 Hooks Config Example (Kiro only, auto-generated)</summary>
 
-会话结束自动保存已移除，开发流程检查（`.kiro/hooks/dev-workflow-check.kiro.hook`）：
+Auto-save on session end removed. Dev workflow check (`.kiro/hooks/dev-workflow-check.kiro.hook`):
 
 ```json
 {
   "enabled": true,
-  "name": "开发流程检查",
+  "name": "Dev Workflow Check",
   "version": "1",
   "when": { "type": "promptSubmit" },
   "then": {
     "type": "askAgent",
-    "prompt": "核心原则：操作前验证、禁止盲目测试、自测通过才能说完成"
+    "prompt": "Core principles: verify before acting, no blind testing, only mark done after tests pass"
   }
 }
 ```
 
 </details>
 
-## 🇨🇳 中国大陆用户
+## 🇨🇳 Users in China
 
-首次运行自动下载 Embedding 模型（~200MB），如果慢：
+The embedding model (~200MB) is auto-downloaded on first run. If slow:
 
 ```bash
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
-或在 MCP 配置中加 env：
+Or add env to MCP config:
 
 ```json
 {
@@ -329,160 +352,70 @@ export HF_ENDPOINT=https://hf-mirror.com
 }
 ```
 
-## 📦 技术栈
+## 📦 Tech Stack
 
-| 组件 | 技术 |
-|------|------|
-| 运行时 | Python >= 3.10 |
-| 向量数据库 | SQLite + sqlite-vec |
+| Component | Technology |
+|-----------|-----------|
+| Runtime | Python >= 3.10 |
+| Vector DB | SQLite + sqlite-vec |
 | Embedding | ONNX Runtime + intfloat/multilingual-e5-small |
-| 分词器 | HuggingFace Tokenizers |
-| 协议 | Model Context Protocol (MCP) |
-| Web | 原生 HTTPServer + Vanilla JS |
+| Tokenizer | HuggingFace Tokenizers |
+| Protocol | Model Context Protocol (MCP) |
+| Web | Native HTTPServer + Vanilla JS |
 
-## 📋 更新日志
+## 📋 Changelog
 
-### v0.2.8
+### v1.0.8
 
-**Web 看板**
-- 📋 归档问题详情弹窗：点击归档卡片弹出只读详情（含所有结构化字段：排查过程/根因/解决方案/自测结果/修改文件），底部红色删除按钮支持永久删除归档记录
+- 🔧 Fix PyPI package size anomaly (sdist from 32MB down to 230KB), excluded accidentally packaged dev files
 
-**Steering 规则强化**
-- 📝 `track create` 强制要求 `content` 必填（简述问题现象和背景），禁止只传 title 留空
-- 📝 排查后 `track update` 强制要求填充 `investigation`（排查过程）和 `root_cause`（根本原因）
-- 📝 修复后 `track update` 强制要求填充 `solution`（解决方案）、`files_changed`（修改文件）、`test_result`（自测结果）
-- 📝 第 4 节新增「字段填充规范」子节，明确各阶段必填字段
-- 📝 第 5 节从「代码修改检查」扩展为「操作前检查」，新增看板启动/PyPI 发布/服务重启等操作前 recall 踩坑记录规则
-- 📝 `install.py` STEERING_CONTENT 同步全部变更
+### v1.0.6
 
-**工具优化**
-- 🔧 `track` 工具 `content` 字段描述从「排查内容」改为「问题描述（create 时必填，简述问题现象和背景）」
+**New: Native Desktop App**
+- 🖥️ Native desktop client supporting macOS (ARM64), Windows (x64), Linux (x64)
+- 🖥️ Desktop app shares the same database as Web dashboard, fully feature-equivalent
+- 🖥️ Dark/light theme switching, Glass frosted visual style
+- 🖥️ Login auth, project selection, stats overview, memory management, issue tracking, task management, tag management, settings, data maintenance — full feature coverage
+- 📦 Auto-published installers via GitHub Releases, download and use
 
-### v0.2.7
+**New: CI/CD Auto Build**
+- 🔄 GitHub Actions auto-builds desktop installers for all 3 platforms
+- 🔄 Push a tag to trigger the full compile, package, and release pipeline
 
-**自动关键词提取**
-- 🔑 `remember`/`auto_save` 自动从内容提取关键词补充到 tags，无需 AI 手动传递完整标签
-- 🔑 采用 jieba 中文分词 + 英文正则提取，中英文混合内容均能准确提取高质量关键词
-- 🔑 新增 `jieba>=0.42` 依赖
+**Fixes**
+- 🐛 Windows platform compatibility fixes
+- 🐛 sqlite-vec extension download URL fix
 
-### v0.2.6
+### v1.0.5
 
-**Steering 规则重构**
-- 📝 Steering 规则文档从旧的 3 节结构重写为 9 节结构（新会话启动/处理流程/阻塞规则/问题追踪/代码检查/Spec任务管理/记忆质量/工具速查/开发规范）
-- 📝 `install.py` STEERING_CONTENT 模板同步更新，新项目安装即用新规则
-- 📝 tags 从固定列表改为动态提取（从内容提取关键词标签），提升记忆检索精度
+**Optimization: Token Usage Reduction**
+- ⚡ Steering rules changed from per-message dynamic injection to static loading, reducing repeated token consumption
+- ⚡ Greatest impact for Claude Code users — ~2K fewer tokens per message
 
-**Bug 修复**
-- 🐛 `readme` 工具 `handle_readme()` 缺少 `**_` 导致 MCP 调用报错 `unexpected keyword argument 'engine'`
-- 🐛 Web 看板记忆搜索分页修复（有搜索词时先全量过滤再分页，解决搜索结果不完整问题）
+### v1.0.4
 
-**文档更新**
-- 📖 README 工具数量 7→8、架构图 `digest`→`task`、工具描述新增 `task`/`readme`
-- 📖 `auto_save` 参数从旧的 `decisions[]/modifications[]/pitfalls[]/todos[]` 更新为 `preferences[]/extra_tags[]`
-- 📖 Steering 规则范例从 3 节格式更新为 9 节结构摘要
-- 📖 同步更新 6 个语言版本（繁體中文/English/Español/Deutsch/Français/日本語）
+**New: Full-Stack i18n (7 Languages)**
+- 🌐 Web dashboard + desktop UI fully supports 7 languages: 简体中文 / 繁體中文 / English / Español / Deutsch / Français / 日本語
+- 🌐 One-click language switch in settings page, takes effect immediately
+- 🌐 MCP tool responses follow language setting, AI replies automatically use the corresponding language
+- 🌐 Switching language auto-regenerates steering rules for all installed projects
 
-### v0.2.5
+**New: Web Dashboard Settings Page**
+- ⚙️ Language switch, theme settings, system info display
+- ⚙️ Database health check, repair, backup and other maintenance tools
 
-**任务驱动开发模式**
-- 🔗 问题跟踪（track）与任务管理（task）通过 `feature_id` 打通成完整链路：发现问题 → 创建任务 → 执行任务 → 状态自动同步 → 联动归档
-- 🔄 `task update` 更新任务状态时自动同步关联问题状态（全部完成→completed，有进行中→in_progress）
-- 📦 `track archive` 归档问题时自动归档关联任务（最后一个活跃问题归档时联动）
-- 📦 `task` 工具新增 `archive` action，将功能组所有任务移入 `tasks_archive` 归档表
-- 📊 问题卡片显示关联任务进度（如 `5/10`），任务页面支持归档筛选
+### v1.0.3
 
-**新增工具**
-- 🆕 `task` 工具 — 任务管理（batch_create/update/list/delete/archive），支持树形子任务，通过 feature_id 关联 spec 文档
-- 🆕 `readme` 工具 — 从 TOOL_DEFINITIONS/pyproject.toml 自动生成 README 内容，支持多语言和差异对比
+**Optimization: Memory Search**
+- 🔍 `recall` search supports OR/AND tag matching modes, fixing missed results with multi-tag searches
+- 🔍 Semantic search + tag filter defaults to OR matching (broader), tags-only browsing keeps AND matching (more precise)
 
-**工具增强**
-- 🔧 `track` 新增 delete action、9 个结构化字段（description/investigation/root_cause/solution/test_result/notes/files_changed/feature_id/parent_id）、list 按 issue_id 查单条
-- 🔧 `recall` 新增 source 参数过滤（manual/auto_save）和 brief 精简模式（只返回 content+tags，节省上下文）
-- 🔧 `auto_save` 写入记忆标记 source="auto_save"，区分手动记忆和自动保存
+<details>
+<summary>📋 v0.2.x and earlier changelog</summary>
 
-**知识库拆表重构**
-- 🗃️ project_memories + user_memories 独立表，消除 scope/filter_dir 混合查询，查询性能提升
-- 📊 DB Schema v4→v6：issues 新增 9 个结构化字段 + tasks/tasks_archive 表 + memories.source 字段
+See [CHANGELOG-archive.md](docs/CHANGELOG-archive.md)
 
-**Web 看板**
-- 📊 首页新增阻塞状态卡片（红色阻塞警告/绿色正常运行），点击跳转会话状态页
-- 📊 新增任务管理页面（功能组折叠/展开、状态筛选、搜索、CRUD）
-- 📊 侧边栏导航顺序优化（会话状态、问题跟踪、任务管理提前至核心位置）
-- 📊 记忆列表新增 source 过滤和 exclude_tags 排除过滤
-
-**稳定性与规范**
-- 🛡️ Server 主循环全局异常捕获，单条消息错误不再导致 server 退出
-- 🛡️ Protocol 层空行跳过和 JSON 解析异常容错
-- 🕐 时间戳从 UTC 改为本地时区
-- 🧹 清理冗余代码（删除无调用方法、冗余导入、备份文件）
-- 📝 Steering 模板新增 Spec 流程与任务管理章节、context transfer 续接规则
-
-### v0.2.4
-
-- 🔇 Stop hook prompt 改为直接指令，消除 Claude Code 重复回复
-- 🛡️ Steering 规则 auto_save 规范增加短路防护，会话结束场景跳过其他规则
-- 🐛 `_copy_check_track_script` 幂等性修复（返回变更状态避免误报"已同步"）
-- 🐛 issue_repo delete 中 `row.get()` 对 `sqlite3.Row` 不兼容修复（改用 `row.keys()` 判断）
-- 🐛 Web 看板项目选择页面滚动修复（项目多时无法滚动）
-- 🐛 Web 看板 CSS 污染修复（strReplace 全局替换导致 6 处样式异常）
-- 🔄 Web 看板所有 confirm() 弹窗替换为自定义 showConfirm 模态框（记忆/问题/标签/项目删除）
-- 🔄 Web 看板删除操作增加 API 错误响应处理（toast 提示替代 alert）
-- 🧹 `.gitignore` 补充 `.devmemory/` 旧版残留目录忽略规则
-- 🧪 pytest 临时项目数据库残留自动清理（conftest.py session fixture）
-
-### v0.2.3
-
-- 🛡️ PreToolUse Hook：Edit/Write 前强制检查 track issue，无活跃问题则拒绝执行（Claude Code / Kiro / OpenCode 三端支持）
-- 🔌 OpenCode 插件升级为 `@opencode-ai/plugin` SDK 格式（tool.execute.before hook）
-- 🔧 `run install` 自动部署 check_track.sh 检查脚本并动态填充路径
-- 🐛 issue_repo archive/delete 中 `row.get()` 对 `sqlite3.Row` 不兼容修复
-- 🐛 session_id 从 DB 读取最新值再递增，避免多实例竞态
-- 🐛 track date 参数格式校验（YYYY-MM-DD）+ issue_id 类型校验
-- 🐛 Web API 请求解析安全加固（Content-Length 校验 + 10MB 上限 + JSON 异常捕获）
-- 🐛 Tag 过滤 scope 逻辑修复（`filter_dir is not None` 替代 falsy 判断）
-- 🐛 Export 向量数据 struct.unpack 字节长度校验
-- 🐛 Schema 版本化迁移（schema_version 表 + v1/v2/v3 增量迁移）
-- 🐛 `__init__.py` 版本号同步修复
-
-### v0.2.2
-
-- 🔇 Web 看板 `--quiet` 参数屏蔽请求日志
-- 🔄 Web 看板 `--daemon` 参数后台运行（macOS/Linux）
-- 🔧 `run install` MCP 配置生成修复（sys.executable + 完整字段）
-- 📋 问题跟踪增删改归档（Web 看板添加/编辑/归档/删除 + 记忆关联）
-- 👆 全部列表页点击行任意位置弹出编辑弹窗（记忆/问题/标签）
-- 🔒 会话延续/上下文转移时阻塞规则强制生效（跨会话必须重新确认）
-
-### v0.2.1
-
-- ➕ Web 看板前端添加项目（目录浏览器 + 手动输入）
-- 🏷️ 标签跨项目污染修复（标签操作限定当前项目 + 全局记忆范围）
-- 📐 弹窗分页省略号截断 + 弹窗宽度 80%
-- 🔌 OpenCode install 自动生成 auto_save 插件（session.idle 事件触发）
-- 🔗 Claude Code / Cursor / Windsurf install 自动生成 Hooks 配置（会话结束自动保存）
-- 🎯 Web 看板交互体验补全（Toast 操作反馈、空状态引导、导出/导入工具栏）
-- 🔧 统计概览卡片点击跳转（点击记忆数/问题数直接弹窗查看）
-- 🏷️ 标签管理页区分项目/全局标签来源（📁/🌐 标记）
-- 🏷️ 项目卡片标签数合并全局记忆标签
-
-### v0.2.0
-
-- 🔐 Web 看板 Token 认证机制
-- ⚡ Embedding 向量缓存，相同内容不重复计算
-- 🔍 recall 支持 query + tags 组合查询
-- 🗑️ forget 支持批量删除（memory_ids 参数）
-- 📤 记忆导出/导入（JSON 格式）
-- 🔎 Web 看板语义搜索
-- 🗂️ Web 看板项目删除按钮
-- 📊 Web 看板性能优化（消除全表扫描）
-- 🧠 digest 智能压缩
-- 💾 session_id 持久化
-- 📏 content 长度限制保护
-- 🏷️ version 动态引用（不再硬编码）
-
-### v0.1.x
-
-- 初始版本：7 个 MCP 工具、Web 看板、3D 向量可视化、多语言支持
+</details>
 
 ## 🌐 HTTP API
 

@@ -3,6 +3,7 @@ from aivectormemory.db.state_repo import StateRepo
 from aivectormemory.db.issue_repo import IssueRepo
 from aivectormemory.db.task_repo import TaskRepo
 from aivectormemory.errors import success_response
+from aivectormemory.i18n.responses import to_json
 
 
 def _build_progress(conn, project_dir: str) -> list[str]:
@@ -49,10 +50,10 @@ def handle_status(args, *, cm, **_):
         state_update.pop("progress", None)
         result = repo.upsert(**state_update)
         result["progress"] = _build_progress(cm.conn, cm.project_dir)
-        return json.dumps(success_response(state=result, action="updated"))
+        return to_json(success_response(state=result, action="updated"))
     else:
         state = repo.get()
         if not state:
             state = repo.upsert()
         state["progress"] = _build_progress(cm.conn, cm.project_dir)
-        return json.dumps(success_response(state=state, action="read"))
+        return to_json(success_response(state=state, action="read"))

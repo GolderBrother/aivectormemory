@@ -20,7 +20,8 @@ TOOL_DEFINITIONS = [
             "properties": {
                 "query": {"type": "string", "description": "搜索内容（语义搜索，可选）"},
                 "scope": {"type": "string", "enum": ["user", "project", "all"], "default": "all"},
-                "tags": {"type": "array", "items": {"type": "string"}, "description": "按标签过滤（无 query 时走纯标签精确查询）"},
+                "tags": {"type": "array", "items": {"type": "string"}, "description": "按标签过滤。query+tags 时默认 OR 匹配（任一标签命中即可），仅 tags 时默认 AND 匹配（精确分类浏览）"},
+                "tags_mode": {"type": "string", "enum": ["any", "all"], "description": "标签匹配模式：any=任一匹配，all=全部匹配。默认智能选择（query+tags→any，仅tags→all）"},
                 "top_k": {"type": "integer", "default": 5, "description": "返回结果数量"},
                 "source": {"type": "string", "enum": ["manual", "experience"], "description": "按来源过滤：manual=项目知识, experience=归档经验。不传则不过滤"},
                 "brief": {"type": "boolean", "default": False, "description": "精简模式：true 时只返回 content 和 tags，省略 id/session_id/created_at 等元数据，适合启动加载场景节省上下文"}

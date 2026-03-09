@@ -119,7 +119,7 @@ class BaseMemoryRepo(BaseRepo):
     def search_by_vector_with_tags(self, embedding: list[float], tags: list[str],
                                     top_k: int = 5, **filters) -> list[dict]:
         import numpy as np
-        candidates = self.list_by_tags(tags, limit=1000, **filters)
+        candidates = self.list_by_tags(tags, limit=1000, tags_mode="any", **filters)
         if not candidates:
             return []
         query_vec = np.array(embedding, dtype=np.float32)

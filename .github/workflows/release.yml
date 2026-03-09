@@ -1,0 +1,214 @@
+name: Build and Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.6)'
+        required: true
+
+env:
+  SQLITE_VEC_VERSION: "0.1.6"
+  GO_VERSION: "1.23"
+  NODE_VERSION: "20"
+  WAILS_VERSION: "latest"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            goos: darwin
+            goarch: arm64
+            platform: macos-arm64
+            vec_os: macos
+            vec_arch: aarch64
+            vec_ext: tar.gz
+            vec_file: vec0.dylib
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            platform: windows-x64
+            vec_os: windows
+            vec_arch: x86_64
+            vec_ext: tar.gz
+            vec_file: vec0.dll
+          - os: ubuntu-22.04
+            goos: linux
+            goarch: amd64
+            platform: linux-x64
+            vec_os: linux
+            vec_arch: x86_64
+            vec_ext: tar.gz
+            vec_file: vec0.so
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: desktop/go.sum
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # --- Platform-specific dependencies ---
+
+      - name: Install Linux dependencies
+        if: matrix.goos == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+
+      - name: Install Windows CGO (mingw-w64)
+        if: matrix.goos == 'windows'
+        run: choco install mingw --no-progress -y
+
+      # --- Build ---
+
+      - name: Build Desktop App (macOS/Linux)
+        if: matrix.goos != 'windows'
+        working-directory: desktop
+        env:
+          CGO_ENABLED: "1"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: wails build
+
+      - name: Build Desktop App (Windows)
+        if: matrix.goos == 'windows'
+        working-directory: desktop
+        env:
+          CGO_ENABLED: "1"
+          GOOS: windows
+          GOARCH: amd64
+        run: wails build
+
+      # --- Download sqlite-vec ---
+
+      - name: Determine version tag
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download sqlite-vec
+        shell: bash
+        run: |
+          VEC_VER="${{ env.SQLITE_VEC_VERSION }}"
+          ASSET="sqlite-vec-${VEC_VER}-loadable-${{ matrix.vec_os }}-${{ matrix.vec_arch }}.${{ matrix.vec_ext }}"
+          URL="https://github.com/asg017/sqlite-vec/releases/download/v${VEC_VER}/${ASSET}"
+          echo "Downloading: ${URL}"
+          curl -fSL -o vec_archive.tar.gz "${URL}"
+          mkdir -p vec_extract
+          tar xzf vec_archive.tar.gz -C vec_extract
+          find vec_extract -name "${{ matrix.vec_file }}" -exec cp {} . \;
+
+      # --- Package ---
+
+      - name: Package (macOS)
+        if: matrix.goos == 'darwin'
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          PKG_NAME="AIVectorMemory-${VERSION}-${{ matrix.platform }}"
+          mkdir -p "$PKG_NAME"
+          cp -R desktop/build/bin/AIVectorMemory.app "$PKG_NAME/"
+          cp "${{ matrix.vec_file }}" "$PKG_NAME/"
+          cp scripts/install.sh "$PKG_NAME/"
+          cp README.md "$PKG_NAME/"
+          zip -r "${PKG_NAME}.zip" "$PKG_NAME"
+
+      - name: Package (Windows)
+        if: matrix.goos == 'windows'
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          PKG_NAME="AIVectorMemory-${VERSION}-${{ matrix.platform }}"
+          mkdir -p "$PKG_NAME"
+          cp desktop/build/bin/AIVectorMemory.exe "$PKG_NAME/"
+          cp "${{ matrix.vec_file }}" "$PKG_NAME/"
+          cp scripts/install.bat "$PKG_NAME/"
+          cp README.md "$PKG_NAME/"
+          7z a "${PKG_NAME}.zip" "$PKG_NAME"
+
+      - name: Package (Linux)
+        if: matrix.goos == 'linux'
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          PKG_NAME="AIVectorMemory-${VERSION}-${{ matrix.platform }}"
+          mkdir -p "$PKG_NAME"
+          cp desktop/build/bin/AIVectorMemory "$PKG_NAME/"
+          chmod +x "$PKG_NAME/AIVectorMemory"
+          cp "${{ matrix.vec_file }}" "$PKG_NAME/"
+          cp scripts/install.sh "$PKG_NAME/"
+          cp README.md "$PKG_NAME/"
+          tar czf "${PKG_NAME}.tar.gz" "$PKG_NAME"
+
+      # --- Upload artifact ---
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}
+          path: AIVectorMemory-*.*
+          retention-days: 5
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (for release notes)
+        uses: actions/checkout@v4
+
+      - name: Determine version tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f -ls
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "AIVectorMemory ${{ steps.version.outputs.tag }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz

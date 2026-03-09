@@ -1,7 +1,6 @@
-import json
 from aivectormemory.db.memory_repo import MemoryRepo
 from aivectormemory.db.user_memory_repo import UserMemoryRepo
-from aivectormemory.errors import success_response
+from aivectormemory.i18n.responses import fmt
 
 
 def handle_forget(args, *, cm, **_):
@@ -36,4 +35,7 @@ def handle_forget(args, *, cm, **_):
             ok = mem_repo.delete(i) or user_repo.delete(i)
         (deleted if ok else not_found).append(i)
 
-    return json.dumps(success_response(deleted_count=len(deleted), ids=deleted, not_found=not_found))
+    text = fmt("forget", deleted_count=len(deleted))
+    if not_found:
+        text += fmt("forget.not_found", not_found_count=len(not_found))
+    return text

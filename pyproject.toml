@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aivectormemory"
-version = "1.0.0"
+version = "1.0.10"
 description = "轻量级 MCP Server，为 AI 编程助手提供跨会话持久记忆能力"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,6 +39,9 @@ Repository = "https://github.com/Edlineas/aivectormemory"
 
 [tool.hatch.build.targets.wheel]
 packages = ["aivectormemory"]
+
+[tool.hatch.build.targets.sdist]
+include = ["aivectormemory/", "scripts/", "README.md", "LICENSE", "NOTICE", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

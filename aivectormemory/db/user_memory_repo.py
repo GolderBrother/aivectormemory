@@ -17,14 +17,20 @@ class UserMemoryRepo(BaseMemoryRepo):
         vals = [mid, content, json.dumps(tags, ensure_ascii=False), source, session_id, now, now]
         return cols, vals
 
-    def list_by_tags(self, tags: list[str], limit: int = 100, source: str | None = None, **_) -> list[dict]:
+    def list_by_tags(self, tags: list[str], limit: int = 100, source: str | None = None,
+                     tags_mode: str = "all", **_) -> list[dict]:
         sql, params = "SELECT * FROM user_memories WHERE 1=1", []
         if source:
             sql += " AND source=?"
             params.append(source)
-        for tag in tags:
-            sql += " AND id IN (SELECT memory_id FROM user_memory_tags WHERE tag=?)"
-            params.append(tag)
+        if tags_mode == "any":
+            sql += " AND (" + " OR ".join(
+                ["id IN (SELECT memory_id FROM user_memory_tags WHERE tag=?)" for _ in tags]) + ")"
+            params.extend(tags)
+        else:
+            for tag in tags:
+                sql += " AND id IN (SELECT memory_id FROM user_memory_tags WHERE tag=?)"
+                params.append(tag)
         sql += " ORDER BY created_at DESC LIMIT ?"
         params.append(limit)
         return [dict(r) for r in self.conn.execute(sql, params).fetchall()]

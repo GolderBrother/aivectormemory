@@ -10,7 +10,12 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 
 class NoFQDNHTTPServer(HTTPServer):
+    allow_reuse_address = True
+
     def server_bind(self):
+        import socket
+        if self.allow_reuse_address:
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(self.server_address)
         self.server_address = self.socket.getsockname()
 
@@ -30,9 +35,12 @@ class WebHandler(SimpleHTTPRequestHandler):
         params = parse_qs(urlparse(self.path).query)
         return params.get("token", [None])[0] == self.auth_token
 
+    def _is_auth_route(self):
+        return self.path.split("?")[0].startswith("/api/auth/")
+
     def do_GET(self):
         if self.path.startswith("/api/"):
-            if not self._check_auth():
+            if not self._is_auth_route() and not self._check_auth():
                 self.send_error(403, "Forbidden: invalid token")
                 return
             handle_api_request(self, self.cm)
@@ -59,7 +67,7 @@ class WebHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         if self.path.startswith("/api/"):
-            if not self._check_auth():
+            if not self._is_auth_route() and not self._check_auth():
                 self.send_error(403, "Forbidden: invalid token")
                 return
             handle_api_request(self, self.cm)

@@ -1,9 +1,9 @@
-import json
 from aivectormemory.config import DEFAULT_TOP_K
 from aivectormemory.db.memory_repo import MemoryRepo
 from aivectormemory.db.user_memory_repo import UserMemoryRepo
 from aivectormemory.db.issue_repo import IssueRepo
 from aivectormemory.errors import success_response
+from aivectormemory.i18n.responses import to_json
 
 
 BRIEF_KEYS = {"content", "tags"}
@@ -34,23 +34,24 @@ def handle_recall(args, *, cm, engine, **_):
     tags = args.get("tags")
     top_k = args.get("top_k", DEFAULT_TOP_K)
     brief = args.get("brief", False)
+    tags_mode = args.get("tags_mode", "any" if query and tags else "all")
 
     if scope == "user":
-        rows = _query_user(cm, engine, query, tags, top_k, source)
+        rows = _query_user(cm, engine, query, tags, top_k, source, tags_mode)
     elif scope == "project":
-        rows = _query_project(cm, engine, query, tags, top_k, source)
+        rows = _query_project(cm, engine, query, tags, top_k, source, tags_mode)
     else:
-        rows = _query_all(cm, engine, query, tags, top_k, source)
+        rows = _query_all(cm, engine, query, tags, top_k, source, tags_mode)
 
-    return json.dumps(success_response(memories=_to_brief(rows) if brief else rows))
+    return to_json(success_response(memories=_to_brief(rows) if brief else rows))
 
 
-def _query_user(cm, engine, query, tags, top_k, source):
+def _query_user(cm, engine, query, tags, top_k, source, tags_mode="all"):
     repo = UserMemoryRepo(cm.conn)
     if not query:
         if not tags:
             raise ValueError("query or tags is required")
-        rows = repo.list_by_tags(tags, limit=top_k, source=source)
+        rows = repo.list_by_tags(tags, limit=top_k, source=source, tags_mode=tags_mode)
         for r in rows:
             r["similarity"] = 1.0
         return rows
@@ -60,12 +61,12 @@ def _query_user(cm, engine, query, tags, top_k, source):
     return _add_similarity(repo.search_by_vector(embedding, top_k=top_k))
 
 
-def _query_project(cm, engine, query, tags, top_k, source):
+def _query_project(cm, engine, query, tags, top_k, source, tags_mode="all"):
     repo = MemoryRepo(cm.conn, cm.project_dir)
     if not query:
         if not tags:
             raise ValueError("query or tags is required")
-        rows = repo.list_by_tags(tags, scope="project", project_dir=cm.project_dir, limit=top_k, source=source)
+        rows = repo.list_by_tags(tags, scope="project", project_dir=cm.project_dir, limit=top_k, source=source, tags_mode=tags_mode)
         for r in rows:
             r["similarity"] = 1.0
         return rows
@@ -75,9 +76,9 @@ def _query_project(cm, engine, query, tags, top_k, source):
     return _add_similarity(repo.search_by_vector(embedding, top_k=top_k, scope="project", project_dir=cm.project_dir, source=source))
 
 
-def _query_all(cm, engine, query, tags, top_k, source):
-    proj = _query_project(cm, engine, query, tags, top_k, source)
-    user = _query_user(cm, engine, query, tags, top_k, source)
+def _query_all(cm, engine, query, tags, top_k, source, tags_mode="all"):
+    proj = _query_project(cm, engine, query, tags, top_k, source, tags_mode)
+    user = _query_user(cm, engine, query, tags, top_k, source, tags_mode)
     merged = proj + user
     merged.sort(key=lambda x: x.get("similarity", 0), reverse=True)
     return merged[:top_k]
@@ -103,4 +104,4 @@ def _recall_experience(args, *, cm, engine):
             "tags": ["经验"],
             "similarity": r["similarity"],
         })
-    return json.dumps(success_response(memories=_to_brief(results) if brief else results))
+    return to_json(success_response(memories=_to_brief(results) if brief else results))

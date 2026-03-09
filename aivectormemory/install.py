@@ -1,9 +1,9 @@
 """aivectormemory install - 交互式为当前项目配置 MCP + Steering 规则"""
 import json
 import os
-import platform
 import sys
 from pathlib import Path
+from aivectormemory.i18n import get_steering, get_workflow_prompt
 
 # (IDE名, MCP配置路径, MCP格式, 是否全局, Steering路径, Steering写入方式, Hooks目录)
 # steering_mode: "file"=独立文件 "append"=追加到已有文件 None=不写Steering
@@ -22,14 +22,13 @@ IDES = [
      lambda root: root / ".windsurf/rules/aivectormemory.md", "file",
      lambda root: root / ".windsurf"),
     ("VSCode",         lambda root: root / ".vscode/mcp.json",         "standard", False,
-     lambda root: root / ".github/copilot-instructions.md", "append", None),
+     lambda root: root / ".github/copilot-instructions.md", "append",
+     lambda root: root / ".claude"),
     ("Trae",           lambda root: root / ".trae/mcp.json",           "standard", False,
      lambda root: root / ".trae/rules/aivectormemory.md", "file", None),
     ("OpenCode",       lambda root: root / "opencode.json",            "opencode", False,
      lambda root: root / "AGENTS.md", "append",
      lambda root: root / ".opencode/plugins"),
-    ("Claude Desktop", lambda _: _claude_desktop_path(),               "standard", True,
-     None, None, None),
 ]
 
 RUNNERS = [
@@ -39,207 +38,6 @@ RUNNERS = [
 
 
 STEERING_MARKER = "<!-- aivectormemory-steering -->"
-
-STEERING_CONTENT = """# AIVectorMemory - 工作规则
-
----
-
-## 1. 新会话启动（必须按顺序执行）
-
-1. `recall`（tags: ["项目知识"], scope: "project", top_k: 100）加载项目知识
-2. `recall`（tags: ["preference"], scope: "user", top_k: 20）加载用户偏好
-3. `status`（不传 state）读取会话状态
-4. 有阻塞（is_blocked=true）→ 汇报阻塞状态，等待用户反馈，**禁止执行任何操作**
-5. 无阻塞 → 进入「收到消息后的处理流程」
-
----
-
-## 2. 收到消息后的处理流程
-
-**步骤 A：调用 `status` 读取状态**
-- 有阻塞 → 汇报并等待，禁止操作
-- 无阻塞 → 继续
-
-**步骤 B：判断消息类型**
-- 闲聊/进度/讨论规则/简单确认 → 直接回答，流程结束
-- 用户纠正错误行为/连续犯错提醒 → 立即 `remember`（tags: ["踩坑", "行为纠正", ...从内容提取关键词], scope: "project"，含：错误行为、用户原话要点、正确做法），然后继续步骤 C
-- 用户表达技术偏好/工作习惯 → `auto_save` 存储偏好
-- 其他（代码问题、bug、功能需求）→ 继续步骤 C
-- 回复时说明判断结果，如："这是个询问"/"这是个问题，需要记录"
-
-**步骤 C：`track create` 记录问题**
-- 无论大小，发现即记录，禁止先修再补
-- `content` 必填：简述问题现象和背景，禁止只传 title 留空 content
-- `status` 更新 pending
-
-**步骤 D：排查**
-- `recall`（query: 相关关键词, tags: ["踩坑", ...从问题提取关键词]）查询踩坑记录
-- 必须查看现有实现代码（禁止凭记忆假设）
-- 涉及数据存储时确认数据流向
-- 禁止盲目测试，必须找到根本原因
-- 发现项目架构/约定/关键实现 → `remember`（tags: ["项目知识", ...从内容提取模块/功能关键词], scope: "project"）
-- `track update` 记录根因和方案：必须填充 `investigation`（排查过程）、`root_cause`（根本原因）
-
-**步骤 E：向用户说明方案，确定流程分支**
-- 排查完成后，根据问题复杂度向用户说明方案：
-  - 简单修复（单文件、bug、配置）→ 继续步骤 F（track 修复流程）
-  - 多步骤需求（新功能、重构、升级）→ 用户确认后转 spec/task 流程（见第6节）
-- 无论哪个分支，都必须先等用户确认后才能执行
-- 立即 `status({ is_blocked: true, block_reason: "方案待用户确认" })`
-- 禁止只口头说"等待确认"而不设阻塞，否则会话转移后新会话会误判为已确认
-- 等待用户确认
-
-**步骤 F：用户确认后修改代码**
-- 修改前 `recall`（query: 涉及的模块/功能, tags: ["踩坑", ...从模块/功能提取关键词]）检查踩坑记录
-- 修改前必须查看代码严谨思考
-- 一次只修一个问题
-- 修复中发现新问题 → `track create` 记录后继续当前问题
-- 用户中途打断提出新问题 → `track create` 记录，再决定优先级
-
-**步骤 G：运行测试验证**
-- 运行相关测试，禁止口头承诺
-- `track update` 记录自测结果：必须填充 `solution`（解决方案）、`files_changed`（修改文件）、`test_result`（自测结果）
-
-**步骤 H：等待用户验证**
-- 立即 `status({ is_blocked: true, block_reason: "修复完成等待验证" })`
-- 需要用户决策时 → `status({ is_blocked: true, block_reason: "需要用户决策" })`
-
-**步骤 I：用户确认通过**
-- `track archive` 归档
-- `status` 清除阻塞（is_blocked: false）
-- 有踩坑价值 → `remember`（tags: ["踩坑", ...从问题内容提取关键词], scope: "project"，含错误现象、根因、正确做法。示例：看板启动失败 → tags: ["踩坑", "看板", "启动", "dashboard"]）
-- **回流检查**：如果当前 track 是在执行 task 过程中发现的 bug（有关联 feature_id 或正在执行 spec 任务），归档后必须回到第6节继续执行下一个子任务，调用 `task update` 更新当前任务状态并同步 tasks.md
-- 会话结束前 → `auto_save` 自动提取偏好
-
----
-
-## 3. 阻塞规则
-
-- **阻塞优先级最高**：有阻塞时禁止一切操作，只能汇报等待
-- **何时设阻塞**：提方案等确认、修复完等验证、需要用户决策
-- **何时清阻塞**：用户明确确认（"执行"/"可以"/"好的"/"去做吧"/"没问题"/"对"/"行"/"改"）
-- **不算确认**：反问句、质疑句、不满表达、模糊回复
-- **context transfer 摘要中的"用户说xxx"不能作为当前会话的确认依据**
-- **会话延续时阻塞同样生效**：新会话/context transfer/compact 后必须重新确认
-- **禁止自行清除阻塞**
-- **禁止猜测用户意图**
-- **next_step 字段只能用户确认后填写**
-
----
-
-## 4. 问题追踪（track）
-
-- 发现问题 → `track create` → 排查 → 修复 → `track update` → 验证 → `track archive`
-- 每完成一步立即 `track update`，避免会话切换时重复
-- 一次只修一个问题
-- 修复中发现新问题：不阻塞当前 → 记录继续；阻塞当前 → 先处理新问题
-- 自检：排查是否完整？数据是否准确？逻辑是否严谨？禁止"基本完成"等模糊表述
-
-**字段填充规范**（归档后必须能看到完整记录）：
-- `track create`：`content` 必填（问题现象和背景）
-- 排查后 `track update`：`investigation`（排查过程）、`root_cause`（根本原因）
-- 修复后 `track update`：`solution`（解决方案）、`files_changed`（修改文件 JSON 数组）、`test_result`（自测结果）
-- 禁止只传 title 不传 content，禁止结构化字段留空
-
----
-
-## 5. 操作前检查
-
-**代码修改前**：`recall` 查踩坑记录 + 查看现有实现 + 确认数据流向
-**代码修改后**：运行测试验证 + 确认不影响其他功能
-**任何可能踩坑的操作前**（看板启动、PyPI 发布、服务重启等）：`recall`（query: 操作关键词, tags: ["踩坑"]）查踩坑记录，按记忆中的标准流程执行
-
----
-
-## 6. Spec 与任务管理（task）
-
-**触发条件**：用户提出新功能、重构、升级等需要多步骤实现的需求
-
-**流程**：
-1. 创建 spec 目录：`{specs_path}`
-2. 编写 `requirements.md`：需求文档，明确功能范围和验收标准
-3. 用户确认需求后，编写 `design.md`：设计文档，技术方案和架构
-4. 用户确认设计后，编写 `tasks.md`：任务文档，拆分为最小可执行单元
-5. 同步调用 `task`（action: batch_create, feature_id: spec 目录名）将任务写入数据库
-
-**⚠️ 步骤 2→3→4 严格顺序执行，禁止跳过 design.md 直接写 tasks.md。每步必须等用户确认后才能进入下一步。**
-6. 按任务文档顺序执行，每完成一个子任务调用 `task`（action: update）更新状态（自动同步 tasks.md checkbox）
-7. 全部完成后调用 `task`（action: list）确认无遗漏
-
-**feature_id 规范**：与 spec 目录名一致，kebab-case（如 `task-scheduler`、`v0.2.5-upgrade`）
-
-**与 track 分工**：task 管功能开发计划进度，track 管 bug 问题追踪。执行 task 过程中发现 bug → `track create` 记录，修完后继续 task
-
-**任务文档规范**：
-- 每个任务细化到最小可执行单元，使用 `- [ ]` 标记状态
-- 每完成一个子任务必须立即执行：① `task update` 更新状态 ② 确认 tasks.md 对应条目已更新为 `[x]`。完成一个处理一个，禁止批量完成后统一更新
-- 整理任务文档时必须打开设计文档逐条核对，发现遗漏先补充再执行
-- 按顺序执行禁止跳过，禁止用"后续迭代"跳过任务
-- **开始任务前必须先检查 tasks.md，确认该任务之前的所有任务已标记 `[x]`，有未完成的前置任务必须先完成，禁止跳组执行**
-
-**自检**：整理任务文档时必须打开设计文档逐条核对，发现遗漏先补充再执行。全部完成后 `task list` 确认无遗漏
-
-**不需要 spec 的场景**：单文件修改、简单 bug、配置调整 → 直接 `track create` 走问题追踪流程
-
----
-
-## 7. 记忆质量要求
-
-- tags 规范：必须包含分类标签（踩坑/项目知识/行为纠正）+ 从内容提取的关键词标签（模块名、功能名、技术词），禁止只打一个分类标签
-- 命令类：完整可执行命令，禁止别名缩写
-- 流程类：具体步骤，不能只写结论
-- 踩坑类：错误现象 + 根因 + 正确做法
-- 行为纠正类：错误行为 + 用户原话要点 + 正确做法
-
----
-
-## 8. 工具速查
-
-| 工具 | 用途 | 关键参数 |
-|------|------|----------|
-| remember | 存入记忆 | content, tags, scope(project/user) |
-| recall | 语义搜索 | query, tags, scope, top_k |
-| forget | 删除记忆 | memory_id / memory_ids |
-| status | 会话状态 | state(不传=读, 传=更新), clear_fields |
-| track | 问题跟踪 | action(create/update/archive/delete/list) |
-| task | 任务管理 | action(batch_create/update/list/delete/archive), feature_id |
-| readme | README生成 | action(generate/diff), lang, sections |
-| auto_save | 保存偏好 | preferences, extra_tags |
-
-**status 字段说明**：
-- `is_blocked`：是否阻塞
-- `block_reason`：阻塞原因
-- `next_step`：下一步（只能用户确认后填写）
-- `current_task`：当前任务
-- `progress`：只读计算字段，自动从 track + task 聚合，无需手动写入
-- `recent_changes`：最近修改（不超过10条）
-- `pending`：待处理列表
-- `clear_fields`：要清空的列表字段名（如 `["pending"]`），绕过部分 IDE 过滤空数组的问题
-
----
-
-## 9. 开发规范
-
-**代码风格**：简洁优先，三目运算符 > if-else，短路求值 > 条件判断，模板字符串 > 拼接，不写无意义注释
-
-**Git 工作流**：日常在 `dev` 分支，禁止直接在 master 提交。只有用户明确要求时才提交。提交流程：确认 dev 分支（`git branch --show-current`）→ `git add -A` → `git commit -m "fix: 简述"` → `git push origin dev`。合并到 master 仅用户明确要求时执行。
-
-**IDE 安全**：禁止 `$(...)` + 管道、禁止 `python3 -c` 多行脚本（写 .py 文件）、`lsof -ti:端口` 必须加 ignoreWarning
-
-**自测要求**：禁止让用户手动操作，能自己执行的不要让用户做。自测通过后才能说"等待验证"。
-
-**任务执行**：按顺序执行禁止跳过，全自动，禁止用"后续迭代"跳过。开始任务前必须先检查 tasks.md，确认前置任务全部 `[x]`，有未完成的前置任务必须先完成
-
-**完成标准**：只有完成和未完成，禁止"基本完成"等模糊表述
-
-**内容迁移**：禁止凭记忆重写，必须从原文件逐行复制
-
-**context transfer/compact 续接**：有未完成工作先完成再汇报
-
-**上下文优化**：优先 `grepSearch` 定位，再 `readFile` 读取特定行。代码修改用 `strReplace`，不要先读后写
-
-**错误处理**：反复失败时记录已尝试方法，换思路解决，仍失败则询问用户
-"""
 
 
 HOOKS_CONFIGS = [
@@ -252,47 +50,7 @@ HOOKS_CONFIGS = [
             "when": {"type": "promptSubmit"},
             "then": {
                 "type": "askAgent",
-                "prompt": (
-                    "## ⚠️ IDENTITY & TONE\n\n"
-                    "- Role：你是首席工程师兼高级数据科学家\n"
-                    "- Voice：Professional，Concise，Result-Oriented。No \"I hope this helps\"\n"
-                    "- Authority：The user is the Lead Architect. Execute explicit commands immediately (not questions).\n\n"
-                    "---\n\n"
-                    "## ⚠️ 消息类型判断\n\n"
-                    "收到用户消息后，严谨认真理解用户消息的意思然后判断消息类型，询问仅限闲聊，进度、讨论规则、简单确认不记录问题文档，其他所有情况必须需要记录问题文档，然后告诉用户方案，等用户确认后再执行\n\n"
-                    "**⚠️ 回复时用自然语言说明判断结果**，例如：\n"
-                    "- \"这是个询问，验证相应文件代码后回答\"\n"
-                    "- \"这是个问题，方案如下...\"\n"
-                    "- \"这个问题需要记录\"\n\n"
-                    "**⚠️ 消息处理必须严格按流程执行，禁止跳步、省略、合并步骤。每个步骤完成后才能进入下一步，禁止自作主张跳过任何环节。**\n\n"
-                    "---\n\n"
-                    "## ⚠️ 核心原则\n\n"
-                    "1. **任何操作前必须验证，不能假设，不能靠记忆**。\n"
-                    "2. **遇到需要处理的问题时禁止盲目测试，必须查看问题对应的代码文件，必须找到问题的根本原因，必须与实际错误对应**。\n"
-                    "3. **禁止口头承诺，口头答应，一切以测试通过为准**。\n"
-                    "4. **任何文件修改前必须查看代码强制严谨思考**。\n"
-                    "5. **开发、自测过程中禁止让用户手动操作，能自己执行的不要让用户做**。\n"
-                    "6. **用户要求读取文件时，禁止以「已读过」「上下文已有」为由跳过，必须重新调用工具读取最新内容**。\n\n"
-                    "---\n\n"
-                    "## ⚠️ IDE 卡死防范\n\n"
-                    "- **禁止** `$(...)` + 管道组合\n"
-                    "- **禁止** MySQL `-e` 执行多条语句\n"
-                    "- **禁止** `python3 -c \"...\"` 执行多行脚本（超过2行必须写成 .py 文件再执行）\n"
-                    "- **禁止** `lsof -ti:端口` 不加 ignoreWarning（会被安全检查拦截）\n"
-                    "- **正确做法**：SQL 写入 `.sql` 文件用 `< data/xxx.sql` 执行；Python 验证脚本写成 .py 文件用 `python3 xxx.py` 执行；端口检查用 `lsof -ti:端口` + ignoreWarning:true\n\n"
-                    "---\n\n"
-                    "## ⚠️ 自测要求\n\n"
-                    "**禁止让用户手动操作** - 能自己执行的，不要让用户做\n\n"
-                    "- Python：`python -m pytest` 或直接运行脚本验证\n"
-                    "- MCP Server：通过 stdio 发送 JSON-RPC 消息验证\n"
-                    "- Web 看板：Playwright 验证\n"
-                    "- 自测通过后才能说\"等待验证\"\n\n"
-                    "---\n\n"
-                    "## ⚠️ 开发规则\n\n"
-                    "> 禁止口头承诺，一切以测试通过为准。\n"
-                    "> 任何文件修改前必须强制严谨思考。\n"
-                    "> 遇到报错或异常时严禁盲目测试，必须分析问题根本原因。"
-                ),
+                "prompt": "",  # 占位，_write_hooks 时动态填充
             },
         },
     },
@@ -325,8 +83,18 @@ CLAUDE_CODE_HOOKS_CONFIG = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "",  # 占位，install 时动态填充实际路径
+                        "command": "",  # 占位，install 时动态填充 check_track.sh 路径
                         "timeout": 10,
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "",  # 占位，install 时动态填充 inject-workflow-rules.sh 路径
                     }
                 ]
             }
@@ -336,17 +104,32 @@ CLAUDE_CODE_HOOKS_CONFIG = {
 
 CURSOR_HOOKS_CONFIG = {
     "version": 1,
-    "hooks": {}
+    "hooks": {
+        "preToolUse": [
+            {
+                "matcher": "edit|write",
+                "command": "",  # 占位，install 时动态填充实际路径
+                "timeout": 10,
+            }
+        ]
+    }
 }
 
 WINDSURF_HOOKS_CONFIG = {
-    "hooks": {}
+    "hooks": {
+        "pre_write_code": [
+            {
+                "command": "",  # 占位，install 时动态填充实际路径
+                "show_output": True,
+            }
+        ]
+    }
 }
 
 
-OPENCODE_PLUGIN_CONTENT = """\
+OPENCODE_PLUGIN_TEMPLATE = """\
 // AIVectorMemory plugin for OpenCode (@opencode-ai/plugin)
-// - experimental.chat.system.transform: 注入开发规则到 system prompt（对应 Kiro promptSubmit hook）
+// - experimental.chat.system.transform: 注入开发规则到 system prompt
 // - tool.execute.before: 检查 Edit/Write 前是否有活跃 track issue
 import { execSync } from "child_process";
 import { homedir } from "os";
@@ -356,65 +139,7 @@ import { join } from "path";
 const DB_PATH = join(homedir(), ".aivectormemory", "memory.db");
 
 const DEV_WORKFLOW_RULES = `<ADDITIONAL_INSTRUCTIONS>
-## IDENTITY & TONE
-
-- Role: 你是首席工程师兼高级数据科学家
-- Voice: Professional, Concise, Result-Oriented. No "I hope this helps"
-- Authority: The user is the Lead Architect. Execute explicit commands immediately (not questions).
-
----
-
-## 消息类型判断
-
-收到用户消息后，严谨认真理解用户消息的意思然后判断消息类型，询问仅限闲聊，进度、讨论规则、简单确认不记录问题文档，其他所有情况必须需要记录问题文档，然后告诉用户方案，等用户确认后再执行
-
-回复时用自然语言说明判断结果，例如：
-- "这是个询问，验证相应文件代码后回答"
-- "这是个问题，方案如下..."
-- "这个问题需要记录"
-
-**⚠️ 消息处理必须严格按流程执行，禁止跳步、省略、合并步骤。每个步骤完成后才能进入下一步，禁止自作主张跳过任何环节。**
-
----
-
-## 核心原则
-
-1. 任何操作前必须验证，不能假设，不能靠记忆。
-2. 遇到需要处理的问题时禁止盲目测试，必须查看问题对应的代码文件，必须找到问题的根本原因，必须与实际错误对应。
-3. 禁止口头承诺，口头答应，一切以测试通过为准。
-4. 任何文件修改前必须查看代码强制严谨思考。
-5. 开发、自测过程中禁止让用户手动操作，能自己执行的不要让用户做。
-6. 用户要求读取文件时，禁止以「已读过」「上下文已有」为由跳过，必须重新调用工具读取最新内容。
-
----
-
-## IDE 卡死防范
-
-- 禁止 $(...) + 管道组合
-- 禁止 MySQL -e 执行多条语句
-- 禁止 python3 -c "..." 执行多行脚本（超过2行必须写成 .py 文件再执行）
-- 禁止 lsof -ti:端口 不加 ignoreWarning（会被安全检查拦截）
-- 正确做法：SQL 写入 .sql 文件用 < data/xxx.sql 执行；Python 验证脚本写成 .py 文件用 python3 xxx.py 执行
-
----
-
-## 自测要求
-
-禁止让用户手动操作 - 能自己执行的，不要让用户做
-
-- Python: python -m pytest 或直接运行脚本验证
-- MCP Server: 通过 stdio 发送 JSON-RPC 消息验证
-- Web 看板: Playwright 验证
-- 自测通过后才能说"等待验证"
-
----
-
-## 开发规则
-
-> 禁止口头承诺，一切以测试通过为准。
-> 任何文件修改前必须强制严谨思考。
-> 遇到报错或异常时严禁盲目测试，必须分析问题根本原因。
-</ADDITIONAL_INSTRUCTIONS>`;
+__DEV_WORKFLOW_RULES__</ADDITIONAL_INSTRUCTIONS>`;
 
 function hasActiveIssues(projectDir) {
   if (!existsSync(DB_PATH)) return true;
@@ -447,6 +172,12 @@ export default async ({ project }) => ({
 """
 
 
+def _build_opencode_plugin_content(lang: str = None) -> str:
+    """动态生成 OpenCode 插件内容，从 i18n 模块加载"""
+    js_rules = get_workflow_prompt(lang).replace('`', '\\`').replace('${', '\\${')
+    return OPENCODE_PLUGIN_TEMPLATE.replace('__DEV_WORKFLOW_RULES__', js_rules)
+
+
 def _copy_check_track_script(target_dir: Path) -> tuple[Path, bool]:
     """复制 check_track.sh 到目标目录，返回 (目标路径, 是否有变更)"""
     import shutil
@@ -460,24 +191,45 @@ def _copy_check_track_script(target_dir: Path) -> tuple[Path, bool]:
     return dst, False
 
 
-def _build_claude_code_hooks(script_path: str) -> dict:
+def _build_claude_code_hooks(check_script_path: str, inject_script_path: str) -> dict:
     """构建 Claude Code hooks 配置，填充实际脚本路径"""
     import copy
     cfg = copy.deepcopy(CLAUDE_CODE_HOOKS_CONFIG)
-    cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"] = script_path
+    cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"] = check_script_path
+    cfg["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"] = inject_script_path
     return cfg
 
 
-def _write_claude_code_hooks(hooks_dir: Path) -> list[str]:
+def _write_inject_workflow_script(target_dir: Path, lang: str | None = None) -> tuple[Path, bool]:
+    """生成 inject-workflow-rules.sh，只包含指定语言的 workflow prompt（直接 cat 输出）"""
+    from aivectormemory.settings import get_language
+    if lang is None:
+        lang = get_language()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    dst = target_dir / "inject-workflow-rules.sh"
+    prompt = get_workflow_prompt(lang)
+    parts = ["#!/bin/bash", "cat <<'AIVECTORMEMORY_EOF'", prompt, "AIVECTORMEMORY_EOF"]
+    content = "\n".join(parts) + "\n"
+    if dst.exists() and dst.read_text("utf-8") == content:
+        return dst, False
+    dst.write_text(content, encoding="utf-8")
+    dst.chmod(0o755)
+    return dst, True
+
+
+def _write_claude_code_hooks(hooks_dir: Path, lang: str | None = None) -> list[str]:
     """写入 Claude Code hooks 到 .claude/settings.json"""
     results = []
     hooks_dir.mkdir(parents=True, exist_ok=True)
-    # 复制检查脚本
     script_dir = hooks_dir / "hooks"
-    script_path, script_changed = _copy_check_track_script(script_dir)
-    results.append(f"{'✓ 已同步' if script_changed else '- 无变更'}  Script: .claude/hooks/check_track.sh")
+    # 复制 check_track.sh
+    check_path, check_changed = _copy_check_track_script(script_dir)
+    results.append(f"{'✓ 已同步' if check_changed else '- 无变更'}  Script: .claude/hooks/check_track.sh")
+    # 生成 inject-workflow-rules.sh
+    inject_path, inject_changed = _write_inject_workflow_script(script_dir, lang=lang)
+    results.append(f"{'✓ 已同步' if inject_changed else '- 无变更'}  Script: .claude/hooks/inject-workflow-rules.sh")
     # 构建配置
-    new_hooks_cfg = _build_claude_code_hooks(str(script_path))
+    new_hooks_cfg = _build_claude_code_hooks(str(check_path), str(inject_path))
     filepath = hooks_dir / "settings.json"
     config = {}
     if filepath.exists():
@@ -487,53 +239,103 @@ def _write_claude_code_hooks(hooks_dir: Path) -> list[str]:
             config = {}
     existing = config.get("hooks", {})
     new_hooks = new_hooks_cfg["hooks"]
-    changed = existing.get("PreToolUse") != new_hooks.get("PreToolUse")
-    # 清理旧的 Stop hook（如果存在）
+    changed = (existing.get("PreToolUse") != new_hooks.get("PreToolUse")
+               or existing.get("UserPromptSubmit") != new_hooks.get("UserPromptSubmit"))
+    # 清理旧的 Stop hook
     has_old_stop = "Stop" in existing
     if changed or has_old_stop:
         config.setdefault("hooks", {})
         config["hooks"]["PreToolUse"] = new_hooks["PreToolUse"]
+        config["hooks"]["UserPromptSubmit"] = new_hooks["UserPromptSubmit"]
         config["hooks"].pop("Stop", None)
         filepath.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        results.append("✓ 已生成  Hook: .claude/settings.json (PreToolUse)")
+        results.append("✓ 已生成  Hook: .claude/settings.json (PreToolUse + UserPromptSubmit)")
     else:
-        results.append("- 无变更  Hook: .claude/settings.json (PreToolUse)")
+        results.append("- 无变更  Hook: .claude/settings.json (PreToolUse + UserPromptSubmit)")
     return results
+
+
+def _build_cursor_hooks(script_path: str) -> dict:
+    """构建 Cursor hooks 配置，填充实际脚本路径"""
+    import copy
+    cfg = copy.deepcopy(CURSOR_HOOKS_CONFIG)
+    cfg["hooks"]["preToolUse"][0]["command"] = script_path
+    return cfg
 
 
 def _write_cursor_hooks(hooks_dir: Path) -> list[str]:
     """写入 Cursor hooks 到 .cursor/hooks.json"""
     results = []
     hooks_dir.mkdir(parents=True, exist_ok=True)
+    # 复制检查脚本
+    script_dir = hooks_dir / "hooks"
+    script_path, script_changed = _copy_check_track_script(script_dir)
+    results.append(f"{'✓ 已同步' if script_changed else '- 无变更'}  Script: .cursor/hooks/check_track.sh")
+    # 构建配置
+    new_cfg = _build_cursor_hooks(str(script_path))
     filepath = hooks_dir / "hooks.json"
-    new_content = json.dumps(CURSOR_HOOKS_CONFIG, indent=2, ensure_ascii=False) + "\n"
+    config = {}
     if filepath.exists():
-        existing = filepath.read_text("utf-8")
-        if existing.strip() == new_content.strip():
-            results.append("- 无变更  Hook: .cursor/hooks.json")
-            return results
-    filepath.write_text(new_content, encoding="utf-8")
-    results.append("✓ 已生成  Hook: .cursor/hooks.json")
+        try:
+            config = json.loads(filepath.read_text("utf-8"))
+        except (json.JSONDecodeError, OSError):
+            config = {}
+    existing_hooks = config.get("hooks", {})
+    new_hooks = new_cfg["hooks"]
+    changed = existing_hooks.get("preToolUse") != new_hooks.get("preToolUse")
+    # 清理旧的 beforeSubmitPrompt hook（如果存在）
+    has_old_hooks = "beforeSubmitPrompt" in existing_hooks
+    if changed or has_old_hooks:
+        config["version"] = new_cfg["version"]
+        config.setdefault("hooks", {})
+        config["hooks"]["preToolUse"] = new_hooks["preToolUse"]
+        config["hooks"].pop("beforeSubmitPrompt", None)
+        filepath.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        results.append("✓ 已生成  Hook: .cursor/hooks.json (preToolUse)")
+    else:
+        results.append("- 无变更  Hook: .cursor/hooks.json (preToolUse)")
     return results
+
+
+def _build_windsurf_hooks(script_path: str) -> dict:
+    """构建 Windsurf hooks 配置，填充实际脚本路径"""
+    import copy
+    cfg = copy.deepcopy(WINDSURF_HOOKS_CONFIG)
+    cfg["hooks"]["pre_write_code"][0]["command"] = script_path
+    return cfg
 
 
 def _write_windsurf_hooks(hooks_dir: Path) -> list[str]:
     """写入 Windsurf hooks 到 .windsurf/hooks.json"""
     results = []
     hooks_dir.mkdir(parents=True, exist_ok=True)
+    # 复制检查脚本
+    script_dir = hooks_dir / "hooks"
+    script_path, script_changed = _copy_check_track_script(script_dir)
+    results.append(f"{'✓ 已同步' if script_changed else '- 无变更'}  Script: .windsurf/hooks/check_track.sh")
+    # 构建配置
+    new_cfg = _build_windsurf_hooks(str(script_path))
     filepath = hooks_dir / "hooks.json"
-    new_content = json.dumps(WINDSURF_HOOKS_CONFIG, indent=2, ensure_ascii=False) + "\n"
+    config = {}
     if filepath.exists():
-        existing = filepath.read_text("utf-8")
-        if existing.strip() == new_content.strip():
-            results.append("- 无变更  Hook: .windsurf/hooks.json")
-            return results
-    filepath.write_text(new_content, encoding="utf-8")
-    results.append("✓ 已生成  Hook: .windsurf/hooks.json")
+        try:
+            config = json.loads(filepath.read_text("utf-8"))
+        except (json.JSONDecodeError, OSError):
+            config = {}
+    existing_hooks = config.get("hooks", {})
+    new_hooks = new_cfg["hooks"]
+    changed = existing_hooks.get("pre_write_code") != new_hooks.get("pre_write_code")
+    if changed:
+        config.setdefault("hooks", {})
+        config["hooks"]["pre_write_code"] = new_hooks["pre_write_code"]
+        filepath.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        results.append("✓ 已生成  Hook: .windsurf/hooks.json (pre_write_code)")
+    else:
+        results.append("- 无变更  Hook: .windsurf/hooks.json (pre_write_code)")
     return results
 
 
-def _write_opencode_plugins(plugins_dir: Path) -> list[str]:
+def _write_opencode_plugins(plugins_dir: Path, lang: str = None) -> list[str]:
     """写入 OpenCode 插件文件，返回变更列表"""
     results = []
     plugins_dir.mkdir(parents=True, exist_ok=True)
@@ -561,16 +363,17 @@ def _write_opencode_plugins(plugins_dir: Path) -> list[str]:
         pkg_changed = True
     results.append(f"{'✓ 已更新' if pkg_changed else '- 无变更'}  package.json (type: module)")
     # 写入插件文件
+    plugin_content = _build_opencode_plugin_content(lang)
     filepath = plugins_dir / "aivectormemory-pre-tool-check.js"
-    if filepath.exists() and filepath.read_text("utf-8").strip() == OPENCODE_PLUGIN_CONTENT.strip():
+    if filepath.exists() and filepath.read_text("utf-8").strip() == plugin_content.strip():
         results.append("- 无变更  Plugin: aivectormemory-pre-tool-check.js")
     else:
-        filepath.write_text(OPENCODE_PLUGIN_CONTENT, encoding="utf-8")
+        filepath.write_text(plugin_content, encoding="utf-8")
         results.append("✓ 已生成  Plugin: aivectormemory-pre-tool-check.js")
     return results
 
 
-def _write_hooks(hooks_dir: Path) -> list[str]:
+def _write_hooks(hooks_dir: Path, lang: str = None) -> list[str]:
     """写入 hook 文件到指定目录（Kiro），返回变更列表"""
     import copy
     results = []
@@ -580,8 +383,10 @@ def _write_hooks(hooks_dir: Path) -> list[str]:
     results.append(f"{'✓ 已同步' if script_changed else '- 无变更'}  Script: check_track.sh")
     for hook in HOOKS_CONFIGS:
         content = copy.deepcopy(hook["content"])
-        # 动态填充 pre-tool-use-check 的 command 路径
-        if hook["filename"] == "pre-tool-use-check.kiro.hook":
+        # 动态填充
+        if hook["filename"] == "dev-workflow-check.kiro.hook":
+            content["then"]["prompt"] = get_workflow_prompt(lang)
+        elif hook["filename"] == "pre-tool-use-check.kiro.hook":
             content["then"]["command"] = str(script_path)
         filepath = hooks_dir / hook["filename"]
         new_content = json.dumps(content, indent=2, ensure_ascii=False) + "\n"
@@ -595,14 +400,6 @@ def _write_hooks(hooks_dir: Path) -> list[str]:
     return results
 
 
-TASKS_PATH_MAP = {
-    "Kiro": ".kiro/specs/{feature}/tasks.md",
-    "Cursor": ".cursor/tasks.md",
-    "Windsurf": ".windsurf/tasks.md",
-    "Trae": ".trae/tasks.md",
-}
-TASKS_PATH_DEFAULT = "tasks.md（项目根目录）"
-
 SPECS_PATH_MAP = {
     "Kiro": ".kiro/specs/{feature_id}/",
     "Cursor": ".cursor/specs/{feature_id}/",
@@ -611,12 +408,21 @@ SPECS_PATH_MAP = {
 }
 SPECS_PATH_DEFAULT = "docs/specs/{feature_id}/（项目根目录）"
 
+# 有每消息注入机制的 IDE，steering 不写入 DEV_WORKFLOW_PROMPT（避免重复）
+PER_MSG_INJECTION_IDES = {"Kiro", "OpenCode", "Claude Code"}
 
-def _write_steering(filepath: Path, mode: str, ide_name: str = "") -> bool:
-    raw = STEERING_CONTENT.strip()
-    tasks_path = TASKS_PATH_MAP.get(ide_name, TASKS_PATH_DEFAULT)
+
+def _write_steering(filepath: Path, mode: str, ide_name: str = "", include_workflow: bool = True, lang: str = None) -> bool:
+    raw = get_steering(lang).strip()
     specs_path = SPECS_PATH_MAP.get(ide_name, SPECS_PATH_DEFAULT)
-    content = raw.replace("{tasks_path}", tasks_path).replace("{specs_path}", specs_path)
+    content = raw.replace("{specs_path}", specs_path)
+    if include_workflow:
+        # 语言无关：在 "## 1." 章节前插入 workflow prompt
+        anchor = "---\n\n## 1."
+        idx = content.find(anchor)
+        if idx != -1:
+            workflow = get_workflow_prompt(lang).strip()
+            content = content[:idx] + f"---\n\n{workflow}\n\n---\n\n## 1." + content[idx + len(anchor):]
     if mode == "file":
         final = content + "\n"
         if filepath.exists() and filepath.read_text("utf-8").strip() == content:
@@ -643,18 +449,6 @@ def _write_steering(filepath: Path, mode: str, ide_name: str = "") -> bool:
             f.write(block)
         return True
     return False
-
-
-def _claude_desktop_path() -> Path | None:
-    s = platform.system()
-    if s == "Darwin":
-        return Path.home() / "Library/Application Support/Claude/claude_desktop_config.json"
-    if s == "Windows":
-        import os
-        return Path(os.environ.get("APPDATA", "")) / "Claude/claude_desktop_config.json"
-    if s == "Linux":
-        return Path.home() / ".config/Claude/claude_desktop_config.json"
-    return None
 
 
 def _build_config(cmd: str, args: list[str], fmt: str) -> dict:
@@ -725,7 +519,25 @@ def run_install(project_dir: str | None = None):
     cmd, args = RUNNERS[runner_indices[0]][1](pdir)
     print(f"  → {cmd} {' '.join(args)}\n")
 
-    # 2. 选择 IDE
+    # 2. 选择语言
+    from aivectormemory.settings import SUPPORTED_LANGS, get_language, set_language
+    lang_labels = {
+        "zh-CN": "简体中文", "zh-TW": "繁體中文", "en": "English",
+        "es": "Español", "de": "Deutsch", "fr": "Français", "ja": "日本語",
+    }
+    current_lang = get_language()
+    lang_options = [(f"{lang_labels.get(l, l)}{' (当前)' if l == current_lang else ''}", l) for l in SUPPORTED_LANGS]
+    print("AI 规则语言：")
+    lang_indices = _choose("选择语言 [当前]", lang_options)
+    if lang_indices is not None:
+        selected_lang = lang_options[lang_indices[0]][1]
+    else:
+        selected_lang = current_lang
+    if selected_lang != current_lang:
+        set_language(selected_lang)
+    print(f"  → {lang_labels.get(selected_lang, selected_lang)}\n")
+
+    # 3. 选择 IDE
     print("支持的 IDE：")
     valid_ides = []
     for name, path_fn, fmt, is_global, steering_fn, steering_mode, hooks_fn in IDES:
@@ -757,7 +569,8 @@ def run_install(project_dir: str | None = None):
         # 4. 写入 Steering 规则
         if steering_fn and steering_mode:
             steering_path = steering_fn(root)
-            s_changed = _write_steering(steering_path, steering_mode, ide_name)
+            include_workflow = ide_name not in PER_MSG_INJECTION_IDES
+            s_changed = _write_steering(steering_path, steering_mode, ide_name, include_workflow, lang=selected_lang)
             s_status = "✓ 已生成" if s_changed else "- 无变更"
             print(f"  {s_status}  {label} Steering 规则 → {steering_path.relative_to(root)}")
 
@@ -766,7 +579,7 @@ def run_install(project_dir: str | None = None):
             hooks_dir = hooks_fn(root)
             hooks_dir_str = str(hooks_dir)
             if hooks_dir_str.endswith(".opencode/plugins"):
-                hook_results = _write_opencode_plugins(hooks_dir)
+                hook_results = _write_opencode_plugins(hooks_dir, lang=selected_lang)
             elif hooks_dir_str.endswith(".claude"):
                 hook_results = _write_claude_code_hooks(hooks_dir)
             elif hooks_dir_str.endswith(".cursor"):
@@ -774,7 +587,7 @@ def run_install(project_dir: str | None = None):
             elif hooks_dir_str.endswith(".windsurf"):
                 hook_results = _write_windsurf_hooks(hooks_dir)
             else:
-                hook_results = _write_hooks(hooks_dir)
+                hook_results = _write_hooks(hooks_dir, lang=selected_lang)
             for r in hook_results:
                 print(f"  {r}")
 
