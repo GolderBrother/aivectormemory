@@ -43,11 +43,16 @@ func (d *DB) GetIssues(projectDir, status, date, keyword string, limit, offset i
 	if status == "archived" {
 		return d.getArchivedIssues(projectDir, date, keyword, limit, offset)
 	}
+	if status == "" || status == "all" {
+		return d.getAllIssues(projectDir, date, keyword, limit, offset)
+	}
 
 	where := []string{"project_dir=?"}
 	args := []interface{}{projectDir}
 
-	if status != "" && status != "all" {
+	if status == "active" {
+		where = append(where, "status IN ('pending','in_progress')")
+	} else {
 		where = append(where, "status=?")
 		args = append(args, status)
 	}
@@ -106,6 +111,46 @@ func (d *DB) getArchivedIssues(projectDir, date, keyword string, limit, offset i
 	defer rows.Close()
 
 	issues := scanIssues(rows)
+	return &IssueListResult{Issues: issues, Total: total}, nil
+}
+
+func (d *DB) getAllIssues(projectDir, date, keyword string, limit, offset int) (*IssueListResult, error) {
+	w1 := "WHERE project_dir=?"
+	w2 := "WHERE project_dir=?"
+	p1 := []interface{}{projectDir}
+	p2 := []interface{}{projectDir}
+	if date != "" {
+		w1 += " AND date=?"
+		w2 += " AND date=?"
+		p1 = append(p1, date)
+		p2 = append(p2, date)
+	}
+	if keyword != "" {
+		w1 += " AND (title LIKE ? OR content LIKE ?)"
+		w2 += " AND (title LIKE ? OR content LIKE ?)"
+		kw := "%" + keyword + "%"
+		p1 = append(p1, kw, kw)
+		p2 = append(p2, kw, kw)
+	}
+
+	allParams := append(append([]interface{}{}, p1...), p2...)
+
+	var total int
+	d.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM (SELECT id FROM issues %s UNION ALL SELECT id FROM issues_archive %s)", w1, w2), allParams...).Scan(&total)
+
+	cols := "id, project_dir, issue_number, date, title, content, description, investigation, root_cause, solution, files_changed, test_result, notes, feature_id, parent_id, created_at"
+	sql := fmt.Sprintf(
+		"SELECT %s, status, updated_at FROM issues %s UNION ALL SELECT %s, 'archived' as status, archived_at as updated_at FROM issues_archive %s ORDER BY issue_number DESC LIMIT ? OFFSET ?",
+		cols, w1, cols, w2)
+	queryParams := append(allParams, limit, offset)
+	rows, err := d.Query(sql, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	issues := scanIssues(rows)
+	d.attachTaskProgress(projectDir, issues)
 	return &IssueListResult{Issues: issues, Total: total}, nil
 }
 

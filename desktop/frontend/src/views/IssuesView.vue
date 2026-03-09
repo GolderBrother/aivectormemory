@@ -40,7 +40,15 @@ onMounted(() => {
 
 function onSearch(q: string) { setQuery(q) }
 
-function quickFilter(s: string) { setStatus(s) }
+function quickFilter(s: string) {
+  if (s === 'today') {
+    const d = new Date()
+    setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+  } else {
+    setDate('')
+    setStatus(s)
+  }
+}
 
 function onStatusChange(e: Event) { setStatus((e.target as HTMLSelectElement).value) }
 
@@ -134,7 +142,7 @@ async function openView(issue: any) {
     <div class="toolbar toolbar--wrap">
       <input type="date" class="filter-input" @change="onDateChange" />
       <select class="filter-select" :value="statusFilter" @change="onStatusChange">
-        <option value="">{{ t('allStatus') }}</option>
+        <option value="all">{{ t('allIncludeArchived') }}</option>
         <option value="active">{{ t('activeOnly') }}</option>
         <option value="pending">{{ t('status.pending') }}</option>
         <option value="in_progress">{{ t('status.in_progress') }}</option>
@@ -143,7 +151,7 @@ async function openView(issue: any) {
       </select>
       <SearchBox :placeholder="t('searchIssue')" @search="onSearch" />
       <div class="toolbar-right">
-        <button class="btn btn--outline btn--sm" @click="quickFilter('')">{{ t('viewAll') }}</button>
+        <button class="btn btn--outline btn--sm" @click="quickFilter('all')">{{ t('viewAll') }}</button>
         <button class="btn btn--outline btn--sm" @click="quickFilter('today')">{{ t('today') }}</button>
         <button class="btn btn--primary btn--sm" @click="openCreate">{{ t('addIssue') }}</button>
       </div>

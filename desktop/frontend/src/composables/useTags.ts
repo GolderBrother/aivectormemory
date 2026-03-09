@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { GetTags, RenameTag, MergeTags, DeleteTags, SearchMemories } from '../../wailsjs/go/main/App'
+import { GetTags, RenameTag, MergeTags, DeleteTags, GetMemories } from '../../wailsjs/go/main/App'
 import { useProjectStore } from '../stores/project'
 
 export function useTags() {
@@ -34,7 +34,8 @@ export function useTags() {
   }
 
   async function getMemoriesByTag(tag: string, topK = 50) {
-    return await SearchMemories(projectStore.current, tag, 'all', [tag], topK)
+    const result = await GetMemories('all', projectStore.current, '', tag, '', topK, 0)
+    return result?.memories || []
   }
 
   function toggleSelect(name: string) {

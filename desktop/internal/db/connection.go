@@ -13,6 +13,153 @@ type DB struct {
 	mu   sync.RWMutex
 }
 
+// Core tables that the desktop app needs (matches Python schema.py)
+var coreTables = []string{
+	`CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL DEFAULT 0)`,
+	`CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		created_at TEXT NOT NULL DEFAULT (datetime('now')),
+		last_login TEXT
+	)`,
+	`CREATE TABLE IF NOT EXISTS memories (
+		id TEXT PRIMARY KEY,
+		content TEXT NOT NULL,
+		tags TEXT NOT NULL DEFAULT '[]',
+		scope TEXT NOT NULL DEFAULT 'project',
+		source TEXT NOT NULL DEFAULT 'manual',
+		project_dir TEXT NOT NULL DEFAULT '',
+		session_id INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS user_memories (
+		id TEXT PRIMARY KEY,
+		content TEXT NOT NULL,
+		tags TEXT NOT NULL DEFAULT '[]',
+		source TEXT NOT NULL DEFAULT 'manual',
+		session_id INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS session_state (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		project_dir TEXT NOT NULL DEFAULT '',
+		is_blocked INTEGER NOT NULL DEFAULT 0,
+		block_reason TEXT NOT NULL DEFAULT '',
+		next_step TEXT NOT NULL DEFAULT '',
+		current_task TEXT NOT NULL DEFAULT '',
+		progress TEXT NOT NULL DEFAULT '[]',
+		recent_changes TEXT NOT NULL DEFAULT '[]',
+		pending TEXT NOT NULL DEFAULT '[]',
+		updated_at TEXT NOT NULL,
+		last_session_id INTEGER NOT NULL DEFAULT 0,
+		UNIQUE(project_dir)
+	)`,
+	`CREATE TABLE IF NOT EXISTS issues (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		project_dir TEXT NOT NULL DEFAULT '',
+		issue_number INTEGER NOT NULL,
+		date TEXT NOT NULL,
+		title TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		content TEXT NOT NULL DEFAULT '',
+		description TEXT NOT NULL DEFAULT '',
+		investigation TEXT NOT NULL DEFAULT '',
+		root_cause TEXT NOT NULL DEFAULT '',
+		solution TEXT NOT NULL DEFAULT '',
+		files_changed TEXT NOT NULL DEFAULT '[]',
+		test_result TEXT NOT NULL DEFAULT '',
+		notes TEXT NOT NULL DEFAULT '',
+		feature_id TEXT NOT NULL DEFAULT '',
+		parent_id INTEGER NOT NULL DEFAULT 0,
+		memory_id TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS issues_archive (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		project_dir TEXT NOT NULL DEFAULT '',
+		issue_number INTEGER NOT NULL,
+		date TEXT NOT NULL,
+		title TEXT NOT NULL,
+		content TEXT NOT NULL DEFAULT '',
+		description TEXT NOT NULL DEFAULT '',
+		investigation TEXT NOT NULL DEFAULT '',
+		root_cause TEXT NOT NULL DEFAULT '',
+		solution TEXT NOT NULL DEFAULT '',
+		files_changed TEXT NOT NULL DEFAULT '[]',
+		test_result TEXT NOT NULL DEFAULT '',
+		notes TEXT NOT NULL DEFAULT '',
+		feature_id TEXT NOT NULL DEFAULT '',
+		parent_id INTEGER NOT NULL DEFAULT 0,
+		status TEXT NOT NULL DEFAULT '',
+		original_issue_id INTEGER NOT NULL DEFAULT 0,
+		memory_id TEXT NOT NULL DEFAULT '',
+		archived_at TEXT NOT NULL,
+		created_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS tasks (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		project_dir TEXT NOT NULL DEFAULT '',
+		feature_id TEXT NOT NULL DEFAULT '',
+		title TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		sort_order INTEGER NOT NULL DEFAULT 0,
+		parent_id INTEGER NOT NULL DEFAULT 0,
+		task_type TEXT NOT NULL DEFAULT 'manual',
+		metadata TEXT NOT NULL DEFAULT '{}',
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS tasks_archive (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		project_dir TEXT NOT NULL DEFAULT '',
+		feature_id TEXT NOT NULL DEFAULT '',
+		title TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		sort_order INTEGER NOT NULL DEFAULT 0,
+		parent_id INTEGER NOT NULL DEFAULT 0,
+		task_type TEXT NOT NULL DEFAULT 'manual',
+		metadata TEXT NOT NULL DEFAULT '{}',
+		original_task_id INTEGER NOT NULL DEFAULT 0,
+		archived_at TEXT NOT NULL,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`,
+	`CREATE TABLE IF NOT EXISTS memory_tags (
+		memory_id TEXT NOT NULL,
+		tag TEXT NOT NULL,
+		PRIMARY KEY (memory_id, tag)
+	)`,
+	`CREATE TABLE IF NOT EXISTS user_memory_tags (
+		memory_id TEXT NOT NULL,
+		tag TEXT NOT NULL,
+		PRIMARY KEY (memory_id, tag)
+	)`,
+}
+
+var coreIndexes = []string{
+	"CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project_dir)",
+	"CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope)",
+	"CREATE INDEX IF NOT EXISTS idx_memories_tags ON memories(tags)",
+	"CREATE INDEX IF NOT EXISTS idx_memories_source ON memories(source)",
+	"CREATE INDEX IF NOT EXISTS idx_issues_date ON issues(date)",
+	"CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status)",
+	"CREATE INDEX IF NOT EXISTS idx_issues_project ON issues(project_dir)",
+	"CREATE INDEX IF NOT EXISTS idx_issues_archive_project ON issues_archive(project_dir)",
+	"CREATE INDEX IF NOT EXISTS idx_issues_archive_date ON issues_archive(date)",
+	"CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_dir)",
+	"CREATE INDEX IF NOT EXISTS idx_tasks_feature ON tasks(feature_id)",
+	"CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)",
+	"CREATE INDEX IF NOT EXISTS idx_tasks_archive_project ON tasks_archive(project_dir)",
+	"CREATE INDEX IF NOT EXISTS idx_tasks_archive_feature ON tasks_archive(feature_id)",
+	"CREATE INDEX IF NOT EXISTS idx_user_memories_tags ON user_memories(tags)",
+	"CREATE INDEX IF NOT EXISTS idx_memory_tags_tag ON memory_tags(tag)",
+	"CREATE INDEX IF NOT EXISTS idx_user_memory_tags_tag ON user_memory_tags(tag)",
+}
+
 func Open(dbPath string) (*DB, error) {
 	dsn := fmt.Sprintf("%s?_journal_mode=WAL&_busy_timeout=5000", dbPath)
 	conn, err := sql.Open("sqlite3", dsn)
@@ -26,15 +173,15 @@ func Open(dbPath string) (*DB, error) {
 		return nil, fmt.Errorf("set WAL mode: %w", err)
 	}
 
-	if _, err := conn.Exec(`CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		username TEXT UNIQUE NOT NULL,
-		password_hash TEXT NOT NULL,
-		created_at TEXT NOT NULL DEFAULT (datetime('now')),
-		last_login TEXT
-	)`); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("create users table: %w", err)
+	// Create all core tables (IF NOT EXISTS — safe for existing databases)
+	for _, ddl := range coreTables {
+		if _, err := conn.Exec(ddl); err != nil {
+			conn.Close()
+			return nil, fmt.Errorf("init schema: %w", err)
+		}
+	}
+	for _, idx := range coreIndexes {
+		conn.Exec(idx) // indexes are non-fatal
 	}
 
 	return &DB{conn: conn}, nil

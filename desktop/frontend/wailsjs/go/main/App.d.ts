@@ -12,6 +12,10 @@ export function BackupDB():Promise<backup.BackupInfo>;
 
 export function BrowseDirectory(arg1:string):Promise<Record<string, any>>;
 
+export function CheckEnvironment():Promise<Record<string, any>>;
+
+export function CheckUpgrade(arg1:string):Promise<Record<string, any>>;
+
 export function CreateIssue(arg1:string,arg2:string,arg3:string,arg4:string,arg5:Array<string>,arg6:number):Promise<Record<string, any>>;
 
 export function CreateTasks(arg1:string,arg2:string,arg3:string,arg4:string):Promise<number>;
@@ -34,7 +38,11 @@ export function DetectPython():Promise<string>;
 
 export function ExportMemories(arg1:string,arg2:string):Promise<Array<db.MemoryExport>>;
 
+export function GetAppVersion():Promise<string>;
+
 export function GetArchivedTasks(arg1:string,arg2:string):Promise<Array<db.TaskGroup>>;
+
+export function GetCurrentUser(arg1:string):Promise<Record<string, string>>;
 
 export function GetDBStats():Promise<db.DBStats>;
 
@@ -62,6 +70,8 @@ export function GetTasks(arg1:string,arg2:string,arg3:string,arg4:string):Promis
 
 export function HealthCheck():Promise<db.HealthReport>;
 
+export function InstallPackage(arg1:boolean):Promise<string>;
+
 export function ImportMemories(arg1:string,arg2:string):Promise<Record<string, number>>;
 
 export function IsWebDashboardRunning():Promise<boolean>;
@@ -70,9 +80,15 @@ export function LaunchWebDashboard():Promise<void>;
 
 export function ListBackups():Promise<Array<backup.BackupInfo>>;
 
+export function Login(arg1:string,arg2:string):Promise<Record<string, string>>;
+
+export function Logout(arg1:string):Promise<void>;
+
 export function MergeTags(arg1:string,arg2:Array<string>,arg3:string):Promise<number>;
 
 export function RebuildAllEmbeddings():Promise<void>;
+
+export function Register(arg1:string,arg2:string):Promise<void>;
 
 export function RenameTag(arg1:string,arg2:string,arg3:string):Promise<number>;
 
@@ -86,9 +102,9 @@ export function SearchMemories(arg1:string,arg2:string,arg3:string,arg4:Array<st
 
 export function SelectDirectory():Promise<string>;
 
-export function SetLanguage(arg1:string):Promise<void>;
-
 export function SetAutoStart(arg1:boolean):Promise<void>;
+
+export function SetLanguage(arg1:string):Promise<void>;
 
 export function StopWebDashboard():Promise<void>;
 
@@ -99,11 +115,3 @@ export function UpdateMemory(arg1:string,arg2:string,arg3:Array<string>,arg4:str
 export function UpdateStatus(arg1:string,arg2:string,arg3:Array<string>):Promise<db.SessionState>;
 
 export function UpdateTask(arg1:number,arg2:string,arg3:string):Promise<db.Task>;
-
-export function GetCurrentUser(arg1:string):Promise<Record<string, string>>;
-
-export function Login(arg1:string,arg2:string):Promise<Record<string, string>>;
-
-export function Logout(arg1:string):Promise<void>;
-
-export function Register(arg1:string,arg2:string):Promise<void>;

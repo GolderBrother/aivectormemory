@@ -18,6 +18,14 @@ export function BrowseDirectory(arg1) {
   return window['go']['main']['App']['BrowseDirectory'](arg1);
 }
 
+export function CheckEnvironment() {
+  return window['go']['main']['App']['CheckEnvironment']();
+}
+
+export function CheckUpgrade(arg1) {
+  return window['go']['main']['App']['CheckUpgrade'](arg1);
+}
+
 export function CreateIssue(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['main']['App']['CreateIssue'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
@@ -62,8 +70,16 @@ export function ExportMemories(arg1, arg2) {
   return window['go']['main']['App']['ExportMemories'](arg1, arg2);
 }
 
+export function GetAppVersion() {
+  return window['go']['main']['App']['GetAppVersion']();
+}
+
 export function GetArchivedTasks(arg1, arg2) {
   return window['go']['main']['App']['GetArchivedTasks'](arg1, arg2);
+}
+
+export function GetCurrentUser(arg1) {
+  return window['go']['main']['App']['GetCurrentUser'](arg1);
 }
 
 export function GetDBStats() {
@@ -118,6 +134,10 @@ export function HealthCheck() {
   return window['go']['main']['App']['HealthCheck']();
 }
 
+export function InstallPackage(arg1) {
+  return window['go']['main']['App']['InstallPackage'](arg1);
+}
+
 export function ImportMemories(arg1, arg2) {
   return window['go']['main']['App']['ImportMemories'](arg1, arg2);
 }
@@ -134,12 +154,24 @@ export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
 
+export function Login(arg1, arg2) {
+  return window['go']['main']['App']['Login'](arg1, arg2);
+}
+
+export function Logout(arg1) {
+  return window['go']['main']['App']['Logout'](arg1);
+}
+
 export function MergeTags(arg1, arg2, arg3) {
   return window['go']['main']['App']['MergeTags'](arg1, arg2, arg3);
 }
 
 export function RebuildAllEmbeddings() {
   return window['go']['main']['App']['RebuildAllEmbeddings']();
+}
+
+export function Register(arg1, arg2) {
+  return window['go']['main']['App']['Register'](arg1, arg2);
 }
 
 export function RenameTag(arg1, arg2, arg3) {
@@ -166,12 +198,12 @@ export function SelectDirectory() {
   return window['go']['main']['App']['SelectDirectory']();
 }
 
-export function SetLanguage(arg1) {
-  return window['go']['main']['App']['SetLanguage'](arg1);
-}
-
 export function SetAutoStart(arg1) {
   return window['go']['main']['App']['SetAutoStart'](arg1);
+}
+
+export function SetLanguage(arg1) {
+  return window['go']['main']['App']['SetLanguage'](arg1);
 }
 
 export function StopWebDashboard() {
@@ -192,20 +224,4 @@ export function UpdateStatus(arg1, arg2, arg3) {
 
 export function UpdateTask(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateTask'](arg1, arg2, arg3);
-}
-
-export function GetCurrentUser(arg1) {
-  return window['go']['main']['App']['GetCurrentUser'](arg1);
-}
-
-export function Login(arg1, arg2) {
-  return window['go']['main']['App']['Login'](arg1, arg2);
-}
-
-export function Logout(arg1) {
-  return window['go']['main']['App']['Logout'](arg1);
-}
-
-export function Register(arg1, arg2) {
-  return window['go']['main']['App']['Register'](arg1, arg2);
 }

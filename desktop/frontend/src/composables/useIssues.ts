@@ -12,7 +12,7 @@ export function useIssues() {
   const issues = ref<any[]>([])
   const total = ref(0)
   const page = ref(1)
-  const statusFilter = ref('')
+  const statusFilter = ref('all')
   const dateFilter = ref('')
   const query = ref('')
   const loading = ref(false)

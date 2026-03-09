@@ -3,7 +3,6 @@ import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore } from '../../stores/project'
-import { useThemeStore } from '../../stores/theme'
 import { useAuthStore } from '../../stores/auth'
 import { LaunchWebDashboard, StopWebDashboard, IsWebDashboardRunning } from '../../../wailsjs/go/main/App'
 
@@ -11,7 +10,6 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const projectStore = useProjectStore()
-const themeStore = useThemeStore()
 const authStore = useAuthStore()
 const webRunning = ref(false)
 
@@ -37,7 +35,7 @@ const memoryNav: { name: string; icon: string; key?: string }[] = [
 ]
 
 const systemNav: { name: string; icon: string; key?: string }[] = [
-  { name: 'settings', icon: 'settings' },
+  { name: 'settings', key: 'systemSettings', icon: 'settings' },
 ]
 
 function isActive(name: string) { return route.name === name }
@@ -48,9 +46,9 @@ function goBack() {
   router.push('/')
 }
 
-function toggleTheme() {
-  const next = themeStore.resolvedTheme() === 'dark' ? 'light' : 'dark'
-  themeStore.setMode(next)
+async function doLogout() {
+  await authStore.logout()
+  window.location.reload()
 }
 
 async function toggleWebDashboard() {
@@ -113,12 +111,9 @@ async function toggleWebDashboard() {
         </div>
         <span v-if="webRunning" class="web-dot" title="Web Dashboard Running"></span>
       </div>
-    </div>
-
-    <div class="theme-toggle" @click="toggleTheme">
-      <svg v-if="themeStore.resolvedTheme() === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      <span>{{ themeStore.resolvedTheme() === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
+      <button class="sidebar-logout" @click.stop="doLogout" :title="t('auth.logout')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
     </div>
 
     <div class="sidebar-decor">
@@ -189,7 +184,6 @@ async function toggleWebDashboard() {
   font-weight: 500;
 }
 
-.sidebar-bottom { border-top: 1px solid var(--bg-surface); }
 .sidebar-user {
   display: flex;
   align-items: center;
@@ -236,20 +230,23 @@ async function toggleWebDashboard() {
   flex-shrink: 0;
   animation: pulse 2s infinite;
 }
-
-.theme-toggle {
+.sidebar-bottom {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 20px;
-  cursor: pointer;
-  transition: all 0.15s;
-  font-size: 12px;
-  color: var(--text-secondary);
   border-top: 1px solid var(--bg-surface);
 }
-.theme-toggle:hover { color: var(--text-primary); background: hsl(0 0% 50% / 0.06); }
-.theme-toggle svg { width: 16px; height: 16px; flex-shrink: 0; }
+.sidebar-logout {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  margin-right: 8px;
+  color: var(--text-muted);
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.sidebar-logout:hover { color: var(--color-danger); }
+.sidebar-logout svg { width: 18px; height: 18px; }
 
 .sidebar-decor {
   padding: 10px 16px 14px;

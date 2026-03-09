@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProjectStore } from '../stores/project'
 import { showError } from '../utils/toast'
-import { GetStatus, GetTags, SearchMemories, GetMemories, GetIssues } from '../../wailsjs/go/main/App'
+import { GetStatus, GetTags, GetMemories, GetIssues } from '../../wailsjs/go/main/App'
 import BlockAlert from '../components/stats/BlockAlert.vue'
 import StatsGrid from '../components/stats/StatsGrid.vue'
 import VectorNetwork from '../components/stats/VectorNetwork.vue'
@@ -73,8 +73,8 @@ async function onCardClick(type: 'memories' | 'issues', scope?: string, status?:
 async function onTagClick(tag: string) {
   memoryModalTitle.value = t('tagLabel', { name: tag })
   try {
-    const results = await SearchMemories(projectStore.current, tag, 'all', [tag], 50)
-    memoryModalResults.value = results || []
+    const result = await GetMemories('all', projectStore.current, '', tag, '', 50, 0)
+    memoryModalResults.value = result?.memories || []
   } catch (e) {
     memoryModalResults.value = []
     showError(e)

@@ -1,33 +1,14 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useProjectStore } from '../stores/project'
-import { useI18n } from 'vue-i18n'
 import Sidebar from '../components/layout/Sidebar.vue'
 
-const { t } = useI18n()
 const projectStore = useProjectStore()
-const route = useRoute()
 const router = useRouter()
 
 onMounted(() => {
   if (!projectStore.current) router.replace('/')
-})
-
-const pageTitle = computed(() => {
-  const name = route.name as string
-  const keyMap: Record<string, string> = {
-    stats: 'stats',
-    status: 'sessionStatus',
-    issues: 'issueTracking',
-    tasks: 'taskManagement',
-    'project-memories': 'projectMemories',
-    'user-memories': 'globalMemories',
-    tags: 'tagManagement',
-    maintenance: 'maintenance',
-    settings: 'settings',
-  }
-  return t(keyMap[name] || name || 'stats')
 })
 
 const projectName = computed(() => {
@@ -41,7 +22,6 @@ const projectName = computed(() => {
   <div class="main">
     <header class="main-header">
       <div class="main-header-left">
-        <span class="main-header-title">{{ pageTitle }}</span>
         <span class="main-header-project">{{ projectName }}</span>
       </div>
       <div class="main-header-actions">
@@ -79,11 +59,6 @@ const projectName = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-.main-header-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
 }
 .main-header-project {
   font-size: 13px;

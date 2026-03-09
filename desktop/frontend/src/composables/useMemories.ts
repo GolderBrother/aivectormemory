@@ -20,7 +20,7 @@ export function useMemories(defaultScope: string) {
     try {
       const dir = projectStore.current
       const offset = (page.value - 1) * PAGE_SIZE
-      const data = await GetMemories(dir, defaultScope, query.value, '', '', PAGE_SIZE, offset)
+      const data = await GetMemories(defaultScope, dir, query.value, '', '', PAGE_SIZE, offset)
       memories.value = data?.memories || []
       total.value = data?.total || 0
     } catch {

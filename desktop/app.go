@@ -9,7 +9,10 @@ import (
 	"sort"
 	"strings"
 
+	"io"
+	"net/http"
 	"os/exec"
+	"time"
 
 	"desktop/internal/auth"
 	"desktop/internal/backup"
@@ -20,6 +23,8 @@ import (
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+const AppVersion = "0.1.0"
 
 type App struct {
 	ctx       context.Context
@@ -471,6 +476,156 @@ func (a *App) GetCurrentUser(token string) (map[string]string, error) {
 		return nil, err
 	}
 	return map[string]string{"username": username}, nil
+}
+
+// ============== Environment & Install ==============
+
+func (a *App) GetAppVersion() string {
+	return AppVersion
+}
+
+func (a *App) CheckEnvironment() map[string]interface{} {
+	result := map[string]interface{}{
+		"python_found":  false,
+		"python_path":   "",
+		"avm_installed": false,
+		"avm_version":   "",
+	}
+
+	// Find Python (reuse candidate logic from embedding.DetectPython)
+	pythonPath := a.findPython()
+	if pythonPath == "" {
+		return result
+	}
+	result["python_found"] = true
+	result["python_path"] = pythonPath
+
+	// Check aivectormemory installed + version
+	out, err := exec.Command(pythonPath, "-c",
+		"import aivectormemory; print(aivectormemory.__version__)").Output()
+	if err != nil {
+		return result
+	}
+	version := strings.TrimSpace(string(out))
+	if version != "" {
+		result["avm_installed"] = true
+		result["avm_version"] = version
+	}
+	return result
+}
+
+func (a *App) CheckUpgrade(currentAvmVersion string) map[string]interface{} {
+	result := map[string]interface{}{
+		"avm_latest":            "",
+		"avm_update_available":  false,
+		"app_latest":            "",
+		"app_update_available":  false,
+		"app_download_url":      "",
+	}
+
+	// 1. Check PyPI latest version
+	pythonPath := a.findPython()
+	if pythonPath != "" {
+		// pip install aivectormemory== triggers error with available versions
+		out, _ := exec.Command(pythonPath, "-m", "pip", "install", "aivectormemory==___").CombinedOutput()
+		outStr := string(out)
+		// Parse "from versions: 0.2.1, 0.2.2, ..., 0.2.6)"
+		if idx := strings.LastIndex(outStr, "from versions:"); idx >= 0 {
+			tail := outStr[idx+len("from versions:"):]
+			if end := strings.Index(tail, ")"); end >= 0 {
+				versions := strings.TrimSpace(tail[:end])
+				parts := strings.Split(versions, ",")
+				if len(parts) > 0 {
+					latest := strings.TrimSpace(parts[len(parts)-1])
+					result["avm_latest"] = latest
+					if latest != "" && latest != currentAvmVersion {
+						result["avm_update_available"] = true
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Check GitHub Releases latest version
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get("https://api.github.com/repos/Edlineas/aivectormemory/releases/latest")
+	if err == nil {
+		defer resp.Body.Close()
+		if resp.StatusCode == 200 {
+			body, _ := io.ReadAll(resp.Body)
+			var release struct {
+				TagName string `json:"tag_name"`
+				HTMLURL string `json:"html_url"`
+			}
+			if json.Unmarshal(body, &release) == nil && release.TagName != "" {
+				appLatest := strings.TrimPrefix(release.TagName, "v")
+				result["app_latest"] = appLatest
+				result["app_download_url"] = release.HTMLURL
+				if appLatest != AppVersion {
+					result["app_update_available"] = true
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+func (a *App) InstallPackage(upgrade bool) (string, error) {
+	pythonPath := a.findPython()
+	if pythonPath == "" {
+		return "", fmt.Errorf("Python not found")
+	}
+
+	args := []string{"-m", "pip", "install"}
+	if upgrade {
+		args = append(args, "--upgrade")
+	}
+	args = append(args, "aivectormemory")
+
+	cmd := exec.Command(pythonPath, args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), fmt.Errorf("install failed: %w\n%s", err, string(output))
+	}
+	return string(output), nil
+}
+
+func (a *App) findPython() string {
+	// If settings has a custom python path, try it first
+	if a.settings != nil && a.settings.PythonPath != "" {
+		if _, err := os.Stat(a.settings.PythonPath); err == nil {
+			return a.settings.PythonPath
+		}
+	}
+	// If engine already detected one, use it
+	if a.engine != nil && a.engine.PythonPath != "" {
+		return a.engine.PythonPath
+	}
+
+	// Scan candidates (find Python, not necessarily with aivectormemory)
+	home, _ := os.UserHomeDir()
+	candidates := []string{
+		filepath.Join(home, "item", "run-memory-mcp-server", ".venv", "bin", "python3"),
+		"python3", "python",
+		"/usr/local/bin/python3",
+		"/usr/bin/python3",
+		"/opt/homebrew/bin/python3",
+	}
+	for _, py := range candidates {
+		path := py
+		if !filepath.IsAbs(path) {
+			found, err := exec.LookPath(path)
+			if err != nil {
+				continue
+			}
+			path = found
+		}
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return ""
 }
 
 func expandHome(path string) string {

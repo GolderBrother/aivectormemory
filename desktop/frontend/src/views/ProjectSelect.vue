@@ -6,7 +6,7 @@ import { useProjectStore, type Project } from '../stores/project'
 import { useSettingsStore } from '../stores/settings'
 import { LANGS } from '../i18n'
 import Modal from '../components/layout/Modal.vue'
-import { BrowseDirectory, SelectDirectory, SetLanguage } from '../../wailsjs/go/main/App'
+import { BrowseDirectory, SelectDirectory, SetLanguage, CheckEnvironment, CheckUpgrade, InstallPackage } from '../../wailsjs/go/main/App'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -23,9 +23,41 @@ const browseDirsList = ref<string[]>([])
 
 const projects = computed(() => projectStore.projects)
 
-onMounted(() => {
+// Environment detection
+const envStatus = ref<any>(null)
+const upgradeInfo = ref<any>(null)
+const installing = ref(false)
+const installResult = ref('') // 'success' | 'error'
+
+onMounted(async () => {
   projectStore.loadProjects()
+  envStatus.value = await CheckEnvironment()
+  if (envStatus.value?.avm_installed) {
+    CheckUpgrade(envStatus.value.avm_version).then(info => { upgradeInfo.value = info })
+  }
 })
+
+async function handleInstall(upgrade = false) {
+  installing.value = true
+  installResult.value = ''
+  try {
+    await InstallPackage(upgrade)
+    installResult.value = 'success'
+    envStatus.value = await CheckEnvironment()
+    if (envStatus.value?.avm_installed) {
+      CheckUpgrade(envStatus.value.avm_version).then(info => { upgradeInfo.value = info })
+    }
+    setTimeout(() => { installResult.value = '' }, 3000)
+  } catch {
+    installResult.value = 'error'
+  } finally {
+    installing.value = false
+  }
+}
+
+function openDownloadUrl(url: string) {
+  window.open(url, '_blank')
+}
 
 function enterProject(p: Project) {
   projectStore.setCurrent(p.project_dir)
@@ -134,6 +166,36 @@ async function confirmDelete() {
       </div>
       <div class="project-select__title">{{ t('selectProject') }}</div>
     </div>
+
+    <!-- Environment banner -->
+    <div v-if="envStatus && !envStatus.python_found" class="env-banner env-banner--warning">
+      <span>{{ t('envNoPython') }}</span>
+      <a class="env-banner__link" href="https://www.python.org/downloads/" target="_blank">{{ t('envNoPythonLink') }}</a>
+    </div>
+    <div v-else-if="envStatus && !envStatus.avm_installed && !installing && installResult !== 'success'" class="env-banner env-banner--info">
+      <span>{{ t('envNoPackage') }}</span>
+      <button class="env-banner__btn" @click="handleInstall(false)">{{ t('envInstallBtn') }}</button>
+    </div>
+    <div v-else-if="installing" class="env-banner env-banner--info">
+      <span class="env-banner__spinner" />
+      <span>{{ t('envInstalling') }}</span>
+    </div>
+    <div v-else-if="installResult === 'success'" class="env-banner env-banner--success">
+      <span>{{ t('envInstallSuccess') }}</span>
+    </div>
+    <div v-else-if="installResult === 'error'" class="env-banner env-banner--error">
+      <span>{{ t('envInstallError') }}</span>
+    </div>
+    <template v-else-if="envStatus?.avm_installed && upgradeInfo">
+      <div v-if="upgradeInfo.avm_update_available" class="env-banner env-banner--info">
+        <span>{{ t('envAvmUpdate', { version: upgradeInfo.avm_latest }) }}</span>
+        <button class="env-banner__btn" @click="handleInstall(true)">{{ t('envUpgradeBtn') }}</button>
+      </div>
+      <div v-if="upgradeInfo.app_update_available" class="env-banner env-banner--info">
+        <span>{{ t('envAppUpdate', { version: upgradeInfo.app_latest }) }}</span>
+        <button class="env-banner__btn" @click="openDownloadUrl(upgradeInfo.app_download_url)">{{ t('envDownloadBtn') }}</button>
+      </div>
+    </template>
 
     <!-- Project grid -->
     <div class="project-grid">
@@ -360,6 +422,33 @@ async function confirmDelete() {
   background: var(--color-purple-bg); padding: 8px 16px; border-radius: var(--radius);
   display: inline-block; margin-top: 12px; user-select: all;
 }
+
+/* Environment banner */
+.env-banner {
+  width: 100%; max-width: 1000px; padding: 12px 24px; margin-bottom: 20px;
+  border-radius: 10px; display: flex; align-items: center; gap: 12px;
+  font-size: 13px; position: relative; z-index: 1;
+  animation: cardIn 0.3s ease backwards;
+}
+.env-banner--warning { background: hsl(45 80% 50% / 0.12); border: 1px solid hsl(45 80% 50% / 0.25); color: hsl(45 80% 70%); }
+.env-banner--info { background: var(--accent-bg); border: 1px solid var(--accent-bg-light); color: var(--accent-light); }
+.env-banner--success { background: hsl(142 50% 45% / 0.12); border: 1px solid hsl(142 50% 45% / 0.25); color: hsl(142 50% 70%); }
+.env-banner--error { background: hsl(0 70% 50% / 0.12); border: 1px solid hsl(0 70% 50% / 0.25); color: hsl(0 70% 70%); }
+.env-banner__link {
+  color: inherit; text-decoration: underline; cursor: pointer; font-weight: 500;
+}
+.env-banner__btn {
+  margin-left: auto; padding: 6px 16px; border-radius: 6px; border: none;
+  font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  background: var(--accent); color: #fff; transition: opacity 0.15s;
+}
+.env-banner__btn:hover { opacity: 0.85; }
+.env-banner--warning .env-banner__btn { background: hsl(45 80% 50%); color: #1a1a2e; }
+.env-banner__spinner {
+  width: 16px; height: 16px; border: 2px solid var(--accent-light); border-top-color: transparent;
+  border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* Language switcher */
 .lang-switcher--topright { position: absolute; top: 20px; right: 32px; z-index: 10; }
