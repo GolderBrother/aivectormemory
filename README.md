@@ -255,14 +255,6 @@ Visit `http://localhost:9080` in your browser. Default username `admin`, passwor
 - 3D vector memory network visualization
 - 🌐 Multi-language support (简体中文 / 繁體中文 / English / Español / Deutsch / Français / 日本語)
 
-<p align="center">
-  <img src="docs/20260306234753_6_1635.jpg" alt="WeChat Group" width="280">
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/8_1635.jpg" alt="QQ Group: 1085682431" width="280">
-  <br>
-  <em>Scan to join WeChat group &nbsp;|&nbsp; Scan to join QQ group</em>
-</p>
-
 ## ⚡ Pairing with Steering Rules
 
 AIVectorMemory is the storage layer. Use Steering rules to tell AI **when and how** to call these tools.
